@@ -1,0 +1,36 @@
+[project]
+name = "near-earth-object-monitor"
+version = "0.1.0"
+description = "Teaching project that summarizes NASA near-earth object API data."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "python-dotenv>=1.0",
+    "requests>=2.32",
+]
+
+[project.scripts]
+neo-monitor = "neo_monitor.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/neo_monitor"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.16",
+    "pytest>=8.4",
+    "ruff>=0.12",
+]
+
+[tool.ruff]
+line-length = 88
+src = ["src", "tests"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src"]

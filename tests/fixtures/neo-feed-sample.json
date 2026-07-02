@@ -1,0 +1,81 @@
+{
+  "links": {
+    "next": "https://api.nasa.gov/neo/rest/v1/feed?start_date=2026-07-03&end_date=2026-07-03&api_key=DEMO_KEY",
+    "prev": "https://api.nasa.gov/neo/rest/v1/feed?start_date=2026-07-01&end_date=2026-07-01&api_key=DEMO_KEY",
+    "self": "https://api.nasa.gov/neo/rest/v1/feed?start_date=2026-07-02&end_date=2026-07-02&api_key=DEMO_KEY"
+  },
+  "element_count": 3,
+  "near_earth_objects": {
+    "2026-07-02": [
+      {
+        "id": "1001",
+        "name": "Example Asteroid Alpha",
+        "estimated_diameter": {
+          "kilometers": {
+            "estimated_diameter_min": 0.1,
+            "estimated_diameter_max": 0.3
+          }
+        },
+        "is_potentially_hazardous_asteroid": false,
+        "close_approach_data": [
+          {
+            "close_approach_date": "2026-07-02",
+            "relative_velocity": {
+              "kilometers_per_hour": "42000"
+            },
+            "miss_distance": {
+              "kilometers": "750000",
+              "lunar": "1.95"
+            }
+          }
+        ]
+      },
+      {
+        "id": "1002",
+        "name": "Example Asteroid Beta",
+        "estimated_diameter": {
+          "kilometers": {
+            "estimated_diameter_min": 0.025,
+            "estimated_diameter_max": 0.075
+          }
+        },
+        "is_potentially_hazardous_asteroid": true,
+        "close_approach_data": [
+          {
+            "close_approach_date": "2026-07-02",
+            "relative_velocity": {
+              "kilometers_per_hour": "71000"
+            },
+            "miss_distance": {
+              "kilometers": "310000",
+              "lunar": "0.81"
+            }
+          }
+        ]
+      },
+      {
+        "id": "1003",
+        "name": "Example Asteroid Gamma",
+        "estimated_diameter": {
+          "kilometers": {
+            "estimated_diameter_min": 0.6,
+            "estimated_diameter_max": 1.0
+          }
+        },
+        "is_potentially_hazardous_asteroid": false,
+        "close_approach_data": [
+          {
+            "close_approach_date": "2026-07-02",
+            "relative_velocity": {
+              "kilometers_per_hour": "38000"
+            },
+            "miss_distance": {
+              "kilometers": "1250000",
+              "lunar": "3.25"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
