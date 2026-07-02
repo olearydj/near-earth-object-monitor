@@ -1,36 +1,29 @@
 # AGENTS.md
 
-This is a teaching repo for INSY 7970: Modern Software Development Tools and Practices for Data Science.
+## Project Context
 
-## Role Of This Repo
+Near-Earth Object Monitor is a small Python CLI that fetches NASA NEO Feed data and prints a terminal summary.
 
-The repo is the instructor's running project example for the second half of the course.
+The project uses a `src/` layout, `uv`, `requests`, `python-dotenv`, `pytest`, Ruff, and mypy.
 
-It should grow lecture by lecture from a small API-backed command-line tool into a more complete data project with saved data, validation, tests, documentation, dashboards or reports, automation, and final handoff.
+## Working Guidelines
 
-## Collaboration Expectations
-
-When helping in this repo:
-
-- Keep changes small and easy to review.
-- Prefer clear, boring Python over clever abstractions.
-- Preserve the separation between API boundary code and testable summary logic.
-- Do not commit real API keys or `.env` files.
-- Use `uv` for project commands.
-- Keep examples teachable for early Python learners.
+- Keep command-line behavior small, explicit, and predictable.
+- Keep NASA API access in `src/neo_monitor/api.py`.
+- Keep command-line orchestration in `src/neo_monitor/cli.py`.
+- Keep parsing, calculations, and formatting helpers in `src/neo_monitor/summarize.py`.
+- Prefer pure functions for summary logic.
+- Use fixture data for unit tests; unit tests should not call the live NASA API.
+- Do not commit `.env`, real API keys, generated data, caches, or `.venv`.
 - Add or update tests when behavior changes.
-- Explain the diff before broad rewrites.
 
-## Current Teaching Premise
+## Checks
 
-This version represents the first real API project step after students learned testable Python structure.
+Run these before committing:
 
-The current feature set should remain small:
-
-- read a NASA API key from the environment
-- fetch near-earth object data
-- summarize the response
-- print a terminal report
-- test parsing and summary behavior using fixture data
-
-Persistence, CSV output, dashboards, and automation come in later lecture iterations.
+```bash
+uv run python -m pytest
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy src
+```

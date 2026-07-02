@@ -1,82 +1,112 @@
 # Near-Earth Object Monitor
 
-A small teaching project for INSY 7970.
+A Python command-line tool for summarizing NASA near-Earth object close-approach data.
 
-The project fetches near-earth object close-approach data from NASA's public API, summarizes the response, and prints a short terminal report.
+The CLI fetches data from NASA's Near Earth Object Web Service and prints a compact terminal summary for a date or short date range.
 
-This is the "tomorrow" version of the project: real API, real package layout, small surface area.
+## Features
 
-Future iterations will add saved raw data, processed CSV output, richer command-line options, validation, documentation, dashboards, and automation.
+- Fetch near-Earth object data from NASA's NEO Feed API.
+- Load the NASA API key from the environment or a local `.env` file.
+- Summarize object counts, potentially hazardous objects, closest approach, fastest object, and largest estimated diameter.
+- Keep API access separate from summarizing logic so the core behavior is easy to test.
 
-## What It Demonstrates
+## Requirements
 
-- `src/` project layout
-- runtime vs development dependencies
-- API key handling with environment variables
-- `.env.example` without committing real secrets
-- API boundary code separated from testable summary logic
-- tests that use fixture data instead of a live API call
-- a small command-line report
+- Python 3.11 or newer
+- `uv`
+- A NASA API key
 
-## Setup
+NASA's `DEMO_KEY` is enough for quick local testing, but it is rate-limited. Request a personal key from <https://api.nasa.gov/> for regular use.
 
-Create the environment:
-
-```bash
-uv sync --group dev
-```
-
-Copy the example environment file:
+## Quick Start
 
 ```bash
+git clone <repo-url>
+cd near-earth-object-monitor
+uv sync
 cp .env.example .env
 ```
 
-For quick testing, `DEMO_KEY` works with NASA's API but is rate-limited.
-
-For regular work, request a free API key from NASA and put it in `.env`:
-
-```text
-NASA_API_KEY=your_key_here
-```
-
-Do not commit `.env`.
-
-## Run
-
-Run for today:
+Edit `.env` and set your API key:
 
 ```bash
-uv run neo-monitor
+NASA_API_KEY=your_api_key_here
 ```
 
-Run for a specific date:
+Run the CLI:
 
 ```bash
-uv run neo-monitor --start-date 2026-07-02
+uv run neo-monitor --start-date 2026-07-01 --end-date 2026-07-01
 ```
 
-Run for a short date range:
+## Usage
+
+Summarize one day:
 
 ```bash
-uv run neo-monitor --start-date 2026-07-01 --end-date 2026-07-02
+uv run neo-monitor --start-date 2026-07-01 --end-date 2026-07-01
 ```
 
-## Check
+Summarize a short date range:
+
+```bash
+uv run neo-monitor --start-date 2026-07-01 --end-date 2026-07-03
+```
+
+The CLI currently prints summaries only. It does not write API responses or reports to disk.
+
+## Configuration
+
+Set `NASA_API_KEY` in your shell or in a local `.env` file.
+
+```bash
+export NASA_API_KEY=your_api_key_here
+```
+
+The `.env` file is ignored by Git so API keys do not get committed.
+
+## Development
+
+Install dependencies:
+
+```bash
+uv sync
+```
+
+Run tests:
 
 ```bash
 uv run python -m pytest
+```
+
+Run code quality checks:
+
+```bash
 uv run ruff format --check .
 uv run ruff check .
 uv run mypy src
 ```
 
-## Notes
-
-NASA's NEO feed endpoint:
+## Project Structure
 
 ```text
-https://api.nasa.gov/neo/rest/v1/feed
+.
+├── src/
+│   └── neo_monitor/
+│       ├── api.py          # NASA API client
+│       ├── cli.py          # command-line interface
+│       └── summarize.py    # data transformation and summary logic
+├── tests/
+│   ├── fixtures/
+│   └── test_summarize.py
+├── .env.example
+├── pyproject.toml
+└── README.md
 ```
 
-The API returns nested JSON. The project keeps the live API request in `api.py` and the testable parsing/summarizing code in `summarize.py`.
+## Data Source
+
+Data comes from NASA's Near Earth Object Web Service:
+
+<https://api.nasa.gov/>
