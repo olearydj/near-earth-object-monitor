@@ -91,6 +91,12 @@ Use plain text output when styled terminal output is not helpful:
 uv run neo-monitor --start-date 2026-07-01 --end-date 2026-07-01 --plain
 ```
 
+Check local project setup without calling NASA:
+
+```bash
+uv run neo-monitor --project-info
+```
+
 ## Configuration
 
 Set `NASA_API_KEY` in your shell or in a local `.env` file.
@@ -132,6 +138,7 @@ uv run mypy src
 │       ├── api.py          # NASA API client
 │       ├── cli.py          # command-line interface
 │       ├── display.py      # terminal presentation helpers
+│       ├── metadata.py     # setup and handoff information
 │       ├── output.py       # file output helpers
 │       └── summarize.py    # data transformation and summary logic
 ├── tests/

@@ -10,6 +10,7 @@ from rich.console import Console
 
 from neo_monitor.api import NasaApiError, fetch_neo_feed
 from neo_monitor.display import print_rich_object_listing, print_rich_summary
+from neo_monitor.metadata import build_project_metadata, format_project_metadata
 from neo_monitor.output import OutputWriteError, write_objects_csv, write_raw_json
 from neo_monitor.summarize import (
     extract_objects,
@@ -82,6 +83,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="print plain text instead of styled terminal output",
     )
+    parser.add_argument(
+        "--project-info",
+        action="store_true",
+        help="print project setup information and exit without calling NASA",
+    )
     return parser.parse_args()
 
 
@@ -93,6 +99,10 @@ def main() -> None:
     args = parse_args()
 
     api_key = os.environ.get("NASA_API_KEY", "")
+    if args.project_info:
+        print(format_project_metadata(build_project_metadata(api_key)))
+        return
+
     if not api_key:
         raise SystemExit(
             "NASA_API_KEY is required. Copy .env.example to .env and add a key."
