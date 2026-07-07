@@ -126,6 +126,34 @@ def summarize_feed(feed: dict[str, Any]) -> NeoSummary:
     return summarize_objects(extract_objects(feed))
 
 
+def filter_objects(
+    objects: Sequence[NeoObject],
+    *,
+    hazardous_only: bool = False,
+    min_diameter_meters: float | None = None,
+    max_miss_distance_lunar: float | None = None,
+) -> list[NeoObject]:
+    """Filter extracted near-earth objects for row-level outputs."""
+
+    filtered: list[NeoObject] = []
+    for obj in objects:
+        if hazardous_only and not obj.hazardous:
+            continue
+        if (
+            min_diameter_meters is not None
+            and obj.diameter_meters < min_diameter_meters
+        ):
+            continue
+        if (
+            max_miss_distance_lunar is not None
+            and obj.miss_distance_lunar > max_miss_distance_lunar
+        ):
+            continue
+        filtered.append(obj)
+
+    return filtered
+
+
 def format_summary(summary: NeoSummary, label: str) -> str:
     """Format the summary for terminal output."""
 
@@ -167,7 +195,7 @@ def format_object_listing(objects: Sequence[NeoObject]) -> str:
     """Format extracted objects as a readable terminal listing."""
 
     if not objects:
-        return "No near-earth objects found."
+        return "No near-earth objects matched."
 
     rows = [
         "Near-Earth Object Listing",

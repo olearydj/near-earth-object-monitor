@@ -71,6 +71,19 @@ Print a row-level listing of the extracted objects:
 uv run neo-monitor --start-date 2026-07-01 --end-date 2026-07-01 --list-objects
 ```
 
+Filter row-level output to potentially hazardous objects:
+
+```bash
+uv run neo-monitor \
+  --start-date 2026-07-01 \
+  --end-date 2026-07-01 \
+  --list-objects \
+  --hazardous-only
+```
+
+Filters apply to row-level listing and processed CSV export. The terminal
+summary still reports the full requested date range.
+
 ## Configuration
 
 Set `NASA_API_KEY` in your shell or in a local `.env` file.

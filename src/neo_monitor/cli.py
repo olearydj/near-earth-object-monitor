@@ -11,6 +11,7 @@ from neo_monitor.api import NasaApiError, fetch_neo_feed
 from neo_monitor.output import OutputWriteError, write_objects_csv, write_raw_json
 from neo_monitor.summarize import (
     extract_objects,
+    filter_objects,
     format_object_listing,
     format_summary,
     summarize_objects,
@@ -55,6 +56,25 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="print a row-level listing of extracted near-earth objects",
     )
+    parser.add_argument(
+        "--hazardous-only",
+        action="store_true",
+        help="include only potentially hazardous objects in row-level outputs",
+    )
+    parser.add_argument(
+        "--min-diameter-meters",
+        type=_nonnegative_float_arg,
+        default=None,
+        metavar="METERS",
+        help="minimum estimated diameter for row-level outputs",
+    )
+    parser.add_argument(
+        "--max-miss-distance-lunar",
+        type=_nonnegative_float_arg,
+        default=None,
+        metavar="LD",
+        help="maximum miss distance in lunar distances for row-level outputs",
+    )
     return parser.parse_args()
 
 
@@ -90,19 +110,25 @@ def main() -> None:
 
     objects = extract_objects(feed)
     summary = summarize_objects(objects)
+    filtered_objects = filter_objects(
+        objects,
+        hazardous_only=args.hazardous_only,
+        min_diameter_meters=args.min_diameter_meters,
+        max_miss_distance_lunar=args.max_miss_distance_lunar,
+    )
 
     try:
         if args.save_raw is not None:
             write_raw_json(feed, args.save_raw)
         if args.save_processed_csv is not None:
-            write_objects_csv(objects, args.save_processed_csv)
+            write_objects_csv(filtered_objects, args.save_processed_csv)
     except OutputWriteError as exc:
         raise SystemExit(str(exc)) from exc
 
     print(format_summary(summary, label))
     if args.list_objects:
         print()
-        print(format_object_listing(objects))
+        print(format_object_listing(filtered_objects))
 
 
 def _date_arg(value: str) -> date:
@@ -114,3 +140,14 @@ def _date_arg(value: str) -> date:
         raise argparse.ArgumentTypeError(
             f"{value!r} is not a valid YYYY-MM-DD date"
         ) from exc
+
+
+def _nonnegative_float_arg(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"{value!r} is not a number") from exc
+
+    if parsed < 0:
+        raise argparse.ArgumentTypeError(f"{value!r} must be nonnegative")
+    return parsed

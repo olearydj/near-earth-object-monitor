@@ -4,6 +4,7 @@ from pathlib import Path
 from neo_monitor.output import write_objects_csv, write_raw_json
 from neo_monitor.summarize import (
     extract_objects,
+    filter_objects,
     format_object_listing,
     format_summary,
     summarize_feed,
@@ -55,6 +56,22 @@ def test_format_object_listing_includes_extracted_rows():
     assert "Near-Earth Object Listing" in listing
     assert "Approach Date | Name | Hazardous" in listing
     assert "2026-07-02 | Example Asteroid Beta | yes | 50 | 0.81 | 71000" in listing
+
+
+def test_filter_objects_can_return_hazardous_only():
+    filtered = filter_objects(extract_objects(load_fixture()), hazardous_only=True)
+
+    assert [obj.name for obj in filtered] == ["Example Asteroid Beta"]
+
+
+def test_filter_objects_can_apply_combined_numeric_filters():
+    filtered = filter_objects(
+        extract_objects(load_fixture()),
+        min_diameter_meters=100,
+        max_miss_distance_lunar=2,
+    )
+
+    assert [obj.name for obj in filtered] == ["Example Asteroid Alpha"]
 
 
 def test_write_raw_json_creates_parent_directories(tmp_path):
