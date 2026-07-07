@@ -6,8 +6,10 @@ from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
+from rich.console import Console
 
 from neo_monitor.api import NasaApiError, fetch_neo_feed
+from neo_monitor.display import print_rich_object_listing, print_rich_summary
 from neo_monitor.output import OutputWriteError, write_objects_csv, write_raw_json
 from neo_monitor.summarize import (
     extract_objects,
@@ -75,6 +77,11 @@ def parse_args() -> argparse.Namespace:
         metavar="LD",
         help="maximum miss distance in lunar distances for row-level outputs",
     )
+    parser.add_argument(
+        "--plain",
+        action="store_true",
+        help="print plain text instead of styled terminal output",
+    )
     return parser.parse_args()
 
 
@@ -125,10 +132,16 @@ def main() -> None:
     except OutputWriteError as exc:
         raise SystemExit(str(exc)) from exc
 
-    print(format_summary(summary, label))
-    if args.list_objects:
-        print()
-        print(format_object_listing(filtered_objects))
+    if args.plain:
+        print(format_summary(summary, label))
+        if args.list_objects:
+            print()
+            print(format_object_listing(filtered_objects))
+    else:
+        console = Console()
+        print_rich_summary(console, summary, label)
+        if args.list_objects:
+            print_rich_object_listing(console, filtered_objects)
 
 
 def _date_arg(value: str) -> date:

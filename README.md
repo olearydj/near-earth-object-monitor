@@ -10,6 +10,7 @@ The CLI fetches data from NASA's Near Earth Object Web Service and prints a comp
 - Load the NASA API key from the environment or a local `.env` file.
 - Summarize object counts, potentially hazardous objects, closest approach, fastest object, and largest estimated diameter.
 - Save raw NASA JSON responses and processed object CSV files when requested.
+- Print readable terminal summaries and object tables.
 - Keep API access separate from summarizing logic so the core behavior is easy to test.
 
 ## Requirements
@@ -84,6 +85,12 @@ uv run neo-monitor \
 Filters apply to row-level listing and processed CSV export. The terminal
 summary still reports the full requested date range.
 
+Use plain text output when styled terminal output is not helpful:
+
+```bash
+uv run neo-monitor --start-date 2026-07-01 --end-date 2026-07-01 --plain
+```
+
 ## Configuration
 
 Set `NASA_API_KEY` in your shell or in a local `.env` file.
@@ -124,6 +131,7 @@ uv run mypy src
 │   └── neo_monitor/
 │       ├── api.py          # NASA API client
 │       ├── cli.py          # command-line interface
+│       ├── display.py      # terminal presentation helpers
 │       ├── output.py       # file output helpers
 │       └── summarize.py    # data transformation and summary logic
 ├── tests/
