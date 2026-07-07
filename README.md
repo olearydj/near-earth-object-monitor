@@ -1,8 +1,8 @@
 # Near-Earth Object Monitor
 
-A Python command-line tool for summarizing NASA near-Earth object close-approach data.
+A Python command-line tool for collecting, summarizing, filtering, and exporting NASA near-Earth object close-approach data.
 
-The CLI fetches data from NASA's Near Earth Object Web Service and prints a compact terminal summary for a date or short date range.
+The CLI fetches data from NASA's Near Earth Object Web Service, prints readable terminal summaries and object tables, and can save raw and processed data artifacts for later inspection, testing, and reporting.
 
 ## Features
 
@@ -85,6 +85,17 @@ uv run neo-monitor \
 Filters apply to row-level listing and processed CSV export. The terminal
 summary still reports the full requested date range.
 
+Filter row-level output by size or miss distance:
+
+```bash
+uv run neo-monitor \
+  --start-date 2026-07-01 \
+  --end-date 2026-07-03 \
+  --list-objects \
+  --min-diameter-meters 100 \
+  --max-miss-distance-lunar 2
+```
+
 Use plain text output when styled terminal output is not helpful:
 
 ```bash
@@ -135,6 +146,7 @@ uv run mypy src
 .
 ├── src/
 │   └── neo_monitor/
+│       ├── __main__.py     # python -m neo_monitor entry point
 │       ├── api.py          # NASA API client
 │       ├── cli.py          # command-line interface
 │       ├── display.py      # terminal presentation helpers
@@ -143,7 +155,11 @@ uv run mypy src
 │       └── summarize.py    # data transformation and summary logic
 ├── tests/
 │   ├── fixtures/
+│   ├── test_metadata.py
 │   └── test_summarize.py
+├── data/
+│   ├── raw/                # generated raw API responses, ignored by Git
+│   └── processed/          # generated processed outputs, ignored by Git
 ├── .env.example
 ├── pyproject.toml
 └── README.md
