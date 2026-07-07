@@ -11,6 +11,7 @@ The CLI fetches data from NASA's Near Earth Object Web Service, prints readable 
 - Summarize object counts, potentially hazardous objects, closest approach, fastest object, and largest estimated diameter.
 - Save raw NASA JSON responses and processed object CSV files when requested.
 - Print readable terminal summaries and object tables.
+- Print the installed CLI version.
 - Keep API access separate from summarizing logic so the core behavior is easy to test.
 
 ## Requirements
@@ -100,6 +101,12 @@ Use plain text output when styled terminal output is not helpful:
 
 ```bash
 uv run neo-monitor --start-date 2026-07-01 --end-date 2026-07-01 --plain
+```
+
+Print the installed CLI version:
+
+```bash
+uv run neo-monitor --version
 ```
 
 Check local project setup without calling NASA:

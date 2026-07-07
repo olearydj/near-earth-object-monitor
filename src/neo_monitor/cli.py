@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 
@@ -10,7 +11,11 @@ from rich.console import Console
 
 from neo_monitor.api import NasaApiError, fetch_neo_feed
 from neo_monitor.display import print_rich_object_listing, print_rich_summary
-from neo_monitor.metadata import build_project_metadata, format_project_metadata
+from neo_monitor.metadata import (
+    build_project_metadata,
+    format_project_metadata,
+    package_version,
+)
 from neo_monitor.output import OutputWriteError, write_objects_csv, write_raw_json
 from neo_monitor.summarize import (
     extract_objects,
@@ -21,12 +26,18 @@ from neo_monitor.summarize import (
 )
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     # argparse handles command-line parsing, help text, and error messages. The
     # rest of the program can work with normal Python values instead of raw
     # strings from the terminal.
     parser = argparse.ArgumentParser(
-        description="Summarize NASA near-earth object close-approach data."
+        prog="neo-monitor",
+        description="Summarize NASA near-earth object close-approach data.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {package_version()}",
     )
     parser.add_argument(
         "--start-date",
@@ -88,7 +99,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="print project setup information and exit without calling NASA",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def main() -> None:

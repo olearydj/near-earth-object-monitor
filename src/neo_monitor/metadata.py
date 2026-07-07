@@ -32,7 +32,7 @@ def build_project_metadata(api_key: str | None) -> ProjectMetadata:
 
     return ProjectMetadata(
         package_name=PACKAGE_NAME,
-        version=_package_version(),
+        version=package_version(),
         api_key_env_var=API_KEY_ENV_VAR,
         api_key_configured=bool(api_key and api_key.strip()),
         data_dirs=RECOMMENDED_DATA_DIRS,
@@ -57,7 +57,9 @@ def format_project_metadata(metadata: ProjectMetadata) -> str:
     return "\n".join(lines)
 
 
-def _package_version() -> str:
+def package_version() -> str:
+    """Return the installed package version, or unknown outside an install."""
+
     try:
         return version(PACKAGE_NAME)
     except PackageNotFoundError:

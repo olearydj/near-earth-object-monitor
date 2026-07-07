@@ -1,6 +1,6 @@
 [project]
 name = "near-earth-object-monitor"
-version = "0.1.0"
+version = "0.2.0"
 description = "Command-line summary tool for NASA near-Earth object API data."
 readme = "README.md"
 requires-python = ">=3.11"
