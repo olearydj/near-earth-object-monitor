@@ -2,7 +2,12 @@ import json
 from pathlib import Path
 
 from neo_monitor.output import write_objects_csv, write_raw_json
-from neo_monitor.summarize import extract_objects, format_summary, summarize_feed
+from neo_monitor.summarize import (
+    extract_objects,
+    format_object_listing,
+    format_summary,
+    summarize_feed,
+)
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "neo-feed-sample.json"
@@ -42,6 +47,14 @@ def test_format_summary_includes_report_values():
     assert "Objects observed: 3" in report
     assert "Potentially hazardous: 1" in report
     assert "Example Asteroid Beta" in report
+
+
+def test_format_object_listing_includes_extracted_rows():
+    listing = format_object_listing(extract_objects(load_fixture()))
+
+    assert "Near-Earth Object Listing" in listing
+    assert "Approach Date | Name | Hazardous" in listing
+    assert "2026-07-02 | Example Asteroid Beta | yes | 50 | 0.81 | 71000" in listing
 
 
 def test_write_raw_json_creates_parent_directories(tmp_path):

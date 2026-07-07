@@ -9,7 +9,12 @@ from dotenv import load_dotenv
 
 from neo_monitor.api import NasaApiError, fetch_neo_feed
 from neo_monitor.output import OutputWriteError, write_objects_csv, write_raw_json
-from neo_monitor.summarize import extract_objects, format_summary, summarize_objects
+from neo_monitor.summarize import (
+    extract_objects,
+    format_object_listing,
+    format_summary,
+    summarize_objects,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -44,6 +49,11 @@ def parse_args() -> argparse.Namespace:
         default=None,
         metavar="PATH",
         help="write extracted near-earth object rows to PATH as CSV",
+    )
+    parser.add_argument(
+        "--list-objects",
+        action="store_true",
+        help="print a row-level listing of extracted near-earth objects",
     )
     return parser.parse_args()
 
@@ -90,6 +100,9 @@ def main() -> None:
         raise SystemExit(str(exc)) from exc
 
     print(format_summary(summary, label))
+    if args.list_objects:
+        print()
+        print(format_object_listing(objects))
 
 
 def _date_arg(value: str) -> date:

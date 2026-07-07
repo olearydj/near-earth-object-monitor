@@ -65,6 +65,12 @@ uv run neo-monitor \
   --save-processed-csv data/processed/neo-objects-2026-07-01.csv
 ```
 
+Print a row-level listing of the extracted objects:
+
+```bash
+uv run neo-monitor --start-date 2026-07-01 --end-date 2026-07-01 --list-objects
+```
+
 ## Configuration
 
 Set `NASA_API_KEY` in your shell or in a local `.env` file.

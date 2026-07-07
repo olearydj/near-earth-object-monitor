@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Sequence
 from typing import Any
 
 
@@ -160,6 +161,38 @@ def format_summary(summary: NeoSummary, label: str) -> str:
         )
 
     return "\n".join(lines)
+
+
+def format_object_listing(objects: Sequence[NeoObject]) -> str:
+    """Format extracted objects as a readable terminal listing."""
+
+    if not objects:
+        return "No near-earth objects found."
+
+    rows = [
+        "Near-Earth Object Listing",
+        (
+            "Approach Date | Name | Hazardous | Diameter (m) | "
+            "Miss Distance (LD) | Velocity (km/h)"
+        ),
+        "-" * 86,
+    ]
+
+    for obj in objects:
+        rows.append(
+            " | ".join(
+                [
+                    obj.approach_date,
+                    obj.name,
+                    "yes" if obj.hazardous else "no",
+                    f"{obj.diameter_meters:.0f}",
+                    f"{obj.miss_distance_lunar:.2f}",
+                    f"{obj.velocity_kph:.0f}",
+                ]
+            )
+        )
+
+    return "\n".join(rows)
 
 
 def _estimated_diameter_meters(raw_object: dict[str, Any]) -> float:
