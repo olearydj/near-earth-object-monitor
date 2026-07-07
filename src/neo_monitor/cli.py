@@ -3,11 +3,13 @@ from __future__ import annotations
 import argparse
 import os
 from datetime import date
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 from neo_monitor.api import NasaApiError, fetch_neo_feed
-from neo_monitor.summarize import format_summary, summarize_feed
+from neo_monitor.output import OutputWriteError, write_objects_csv, write_raw_json
+from neo_monitor.summarize import extract_objects, format_summary, summarize_objects
 
 
 def parse_args() -> argparse.Namespace:
@@ -28,6 +30,20 @@ def parse_args() -> argparse.Namespace:
         type=_date_arg,
         default=None,
         help="last date to request, in YYYY-MM-DD format",
+    )
+    parser.add_argument(
+        "--save-raw",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="write the raw NASA JSON response to PATH",
+    )
+    parser.add_argument(
+        "--save-processed-csv",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="write extracted near-earth object rows to PATH as CSV",
     )
     return parser.parse_args()
 
@@ -62,7 +78,17 @@ def main() -> None:
     if end_date != args.start_date:
         label = f"{args.start_date.isoformat()} to {end_date.isoformat()}"
 
-    summary = summarize_feed(feed)
+    objects = extract_objects(feed)
+    summary = summarize_objects(objects)
+
+    try:
+        if args.save_raw is not None:
+            write_raw_json(feed, args.save_raw)
+        if args.save_processed_csv is not None:
+            write_objects_csv(objects, args.save_processed_csv)
+    except OutputWriteError as exc:
+        raise SystemExit(str(exc)) from exc
+
     print(format_summary(summary, label))
 
 

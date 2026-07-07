@@ -9,6 +9,7 @@ The CLI fetches data from NASA's Near Earth Object Web Service and prints a comp
 - Fetch near-Earth object data from NASA's NEO Feed API.
 - Load the NASA API key from the environment or a local `.env` file.
 - Summarize object counts, potentially hazardous objects, closest approach, fastest object, and largest estimated diameter.
+- Save raw NASA JSON responses and processed object CSV files when requested.
 - Keep API access separate from summarizing logic so the core behavior is easy to test.
 
 ## Requirements
@@ -54,7 +55,15 @@ Summarize a short date range:
 uv run neo-monitor --start-date 2026-07-01 --end-date 2026-07-03
 ```
 
-The CLI currently prints summaries only. It does not write API responses or reports to disk.
+Save the raw NASA response and processed object rows:
+
+```bash
+uv run neo-monitor \
+  --start-date 2026-07-01 \
+  --end-date 2026-07-01 \
+  --save-raw data/raw/neo-2026-07-01.json \
+  --save-processed-csv data/processed/neo-objects-2026-07-01.csv
+```
 
 ## Configuration
 
@@ -96,6 +105,7 @@ uv run mypy src
 │   └── neo_monitor/
 │       ├── api.py          # NASA API client
 │       ├── cli.py          # command-line interface
+│       ├── output.py       # file output helpers
 │       └── summarize.py    # data transformation and summary logic
 ├── tests/
 │   ├── fixtures/
@@ -104,6 +114,10 @@ uv run mypy src
 ├── pyproject.toml
 └── README.md
 ```
+
+Generated data files belong under `data/raw/` and `data/processed/`. Those
+folders are ignored by Git because they can be recreated from documented
+commands. Small stable examples used by tests belong under `tests/fixtures/`.
 
 ## Data Source
 

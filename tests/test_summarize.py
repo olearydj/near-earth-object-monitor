@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from neo_monitor.output import write_objects_csv, write_raw_json
 from neo_monitor.summarize import extract_objects, format_summary, summarize_feed
 
 
@@ -41,3 +42,22 @@ def test_format_summary_includes_report_values():
     assert "Objects observed: 3" in report
     assert "Potentially hazardous: 1" in report
     assert "Example Asteroid Beta" in report
+
+
+def test_write_raw_json_creates_parent_directories(tmp_path):
+    output_path = tmp_path / "data" / "raw" / "neo-feed.json"
+
+    write_raw_json(load_fixture(), output_path)
+
+    saved = json.loads(output_path.read_text())
+    assert saved["element_count"] == 3
+
+
+def test_write_objects_csv_creates_processed_rows(tmp_path):
+    output_path = tmp_path / "data" / "processed" / "neo-objects.csv"
+
+    write_objects_csv(extract_objects(load_fixture()), output_path)
+
+    csv_text = output_path.read_text()
+    assert "approach_date,name,hazardous,diameter_meters" in csv_text
+    assert "2026-07-02,Example Asteroid Beta,true,50.000" in csv_text
