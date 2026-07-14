@@ -1,21 +1,30 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from neo_monitor.output import write_objects_csv, write_raw_json
 from neo_monitor.summarize import (
+    NeoDataValidationError,
     extract_objects,
     filter_objects,
     format_object_listing,
     format_summary,
+    rank_objects,
     summarize_feed,
 )
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "neo-feed-sample.json"
+INVALID_FIXTURE = Path(__file__).parent / "fixtures" / "neo-feed-invalid.json"
 
 
 def load_fixture():
     return json.loads(FIXTURE.read_text())
+
+
+def load_invalid_fixture():
+    return json.loads(INVALID_FIXTURE.read_text())
 
 
 def test_extract_objects_returns_selected_fields():
@@ -24,6 +33,21 @@ def test_extract_objects_returns_selected_fields():
     assert len(objects) == 3
     assert objects[0].name == "Example Asteroid Alpha"
     assert objects[0].diameter_meters == 200
+
+
+def test_extract_objects_explains_unusable_external_data():
+    with pytest.raises(NeoDataValidationError, match="miss_distance.lunar"):
+        extract_objects(load_invalid_fixture())
+
+
+def test_extract_objects_rejects_an_invalid_external_approach_date():
+    invalid_data = load_fixture()
+    invalid_data["near_earth_objects"]["2026-07-02"][0]["close_approach_data"][0][
+        "close_approach_date"
+    ] = "not-a-date"
+
+    with pytest.raises(NeoDataValidationError, match="close_approach_date"):
+        extract_objects(invalid_data)
 
 
 def test_summarize_feed_identifies_key_objects():
@@ -72,6 +96,20 @@ def test_filter_objects_can_apply_combined_numeric_filters():
     )
 
     assert [obj.name for obj in filtered] == ["Example Asteroid Alpha"]
+
+
+@pytest.mark.parametrize(
+    ("sort_by", "expected_names"),
+    [
+        ("closest", ["Example Asteroid Beta", "Example Asteroid Alpha"]),
+        ("fastest", ["Example Asteroid Beta", "Example Asteroid Alpha"]),
+        ("largest", ["Example Asteroid Gamma", "Example Asteroid Alpha"]),
+    ],
+)
+def test_rank_objects_orders_and_limits_selected_rows(sort_by, expected_names):
+    ranked = rank_objects(extract_objects(load_fixture()), sort_by, top=2)
+
+    assert [obj.name for obj in ranked] == expected_names
 
 
 def test_write_raw_json_creates_parent_directories(tmp_path):

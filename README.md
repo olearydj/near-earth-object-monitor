@@ -11,7 +11,12 @@ The CLI fetches data from NASA's Near Earth Object Web Service, prints readable 
 - Summarize object counts, potentially hazardous objects, closest approach, fastest object, and largest estimated diameter.
 - Save raw NASA JSON responses and processed object CSV files when requested.
 - Print readable terminal summaries and object tables.
+- Rank selected objects by closest approach, speed, or estimated size.
+- Render ranked objects as a terminal bar chart with Rich.
 - Print the installed CLI version.
+- Validate the external NASA fields the project uses before creating internal records.
+- Offer optional diagnostic logging without cluttering normal command output.
+- Test API failures with mocked responses instead of calling NASA during test runs.
 - Keep API access separate from summarizing logic so the core behavior is easy to test.
 
 ## Requirements
@@ -67,6 +72,10 @@ uv run neo-monitor \
   --save-processed-csv data/processed/neo-objects-2026-07-01.csv
 ```
 
+When `--save-raw` is supplied, the original response is saved before it is
+validated and summarized. That keeps evidence available if the outside data is
+not usable.
+
 Print a row-level listing of the extracted objects:
 
 ```bash
@@ -97,6 +106,29 @@ uv run neo-monitor \
   --max-miss-distance-lunar 2
 ```
 
+Rank and limit the rows written to a listing or CSV file:
+
+```bash
+uv run neo-monitor \
+  --list-objects \
+  --sort-by fastest \
+  --top 5
+```
+
+Render the same ranked rows as a Rich terminal bar chart:
+
+```bash
+uv run neo-monitor \
+  --bar-chart \
+  --sort-by largest \
+  --top 5
+```
+
+`--sort-by` accepts `closest`, `fastest`, or `largest`. Chart bars are scaled
+only to the selected rows, so the exact value beside each bar remains the
+evidence to compare across runs. `--bar-chart` requires Rich output and cannot
+be combined with `--plain`.
+
 Use plain text output when styled terminal output is not helpful:
 
 ```bash
@@ -108,6 +140,24 @@ Print the installed CLI version:
 ```bash
 uv run neo-monitor --version
 ```
+
+Show operational messages in the terminal while the command runs:
+
+```bash
+uv run neo-monitor --start-date 2026-07-01 --verbose
+```
+
+Write more detailed diagnostic messages to a file:
+
+```bash
+uv run neo-monitor \
+  --start-date 2026-07-01 \
+  --log-file logs/neo-monitor.log
+```
+
+`--verbose` writes `INFO` and higher messages to stderr. `--log-file` includes
+additional `DEBUG` detail in the named file. Use both options to see the
+terminal messages while saving the fuller log.
 
 Check local project setup without calling NASA:
 
@@ -139,6 +189,12 @@ Run tests:
 uv run python -m pytest
 ```
 
+Inspect which source lines the tests exercise:
+
+```bash
+uv run pytest --cov=neo_monitor --cov-report=term-missing
+```
+
 Run code quality checks:
 
 ```bash
@@ -157,11 +213,14 @@ uv run mypy src
 │       ├── api.py          # NASA API client
 │       ├── cli.py          # command-line interface
 │       ├── display.py      # terminal presentation helpers
+│       ├── logging_config.py # optional diagnostic logging
 │       ├── metadata.py     # setup and handoff information
 │       ├── output.py       # file output helpers
 │       └── summarize.py    # data transformation and summary logic
 ├── tests/
 │   ├── fixtures/
+│   ├── test_api.py
+│   ├── test_cli.py
 │   ├── test_metadata.py
 │   └── test_summarize.py
 ├── data/

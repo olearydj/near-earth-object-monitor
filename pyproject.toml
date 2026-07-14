@@ -1,10 +1,11 @@
 [project]
 name = "near-earth-object-monitor"
-version = "0.2.0"
+version = "0.3.0"
 description = "Command-line summary tool for NASA near-Earth object API data."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "pydantic>=2.13.4",
     "python-dotenv>=1.0",
     "requests>=2.32",
     "rich>=15.0.0",
@@ -12,6 +13,7 @@ dependencies = [
 
 [project.scripts]
 neo-monitor = "neo_monitor.cli:main"
+neo = "neo_monitor.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.11.25,<0.12"]
@@ -24,6 +26,7 @@ module-name = "neo_monitor"
 dev = [
     "mypy>=1.16",
     "pytest>=8.4",
+    "pytest-cov>=7.1.0",
     "ruff>=0.12",
 ]
 

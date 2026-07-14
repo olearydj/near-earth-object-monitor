@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 from collections.abc import Sequence
 from datetime import date
@@ -10,7 +11,12 @@ from dotenv import load_dotenv
 from rich.console import Console
 
 from neo_monitor.api import NasaApiError, fetch_neo_feed
-from neo_monitor.display import print_rich_object_listing, print_rich_summary
+from neo_monitor.display import (
+    print_rich_bar_chart,
+    print_rich_object_listing,
+    print_rich_summary,
+)
+from neo_monitor.logging_config import LoggingSetupError, configure_logging
 from neo_monitor.metadata import (
     build_project_metadata,
     format_project_metadata,
@@ -18,12 +24,17 @@ from neo_monitor.metadata import (
 )
 from neo_monitor.output import OutputWriteError, write_objects_csv, write_raw_json
 from neo_monitor.summarize import (
+    NeoDataValidationError,
     extract_objects,
     filter_objects,
     format_object_listing,
     format_summary,
+    rank_objects,
     summarize_objects,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -71,6 +82,24 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="print a row-level listing of extracted near-earth objects",
     )
     parser.add_argument(
+        "--sort-by",
+        choices=("closest", "fastest", "largest"),
+        default=None,
+        help="rank row-level results by the selected measure",
+    )
+    parser.add_argument(
+        "--top",
+        type=_positive_int_arg,
+        default=None,
+        metavar="N",
+        help="keep the first N ranked rows for listings and CSV export",
+    )
+    parser.add_argument(
+        "--bar-chart",
+        action="store_true",
+        help="render ranked rows as a Rich bar chart (requires --sort-by)",
+    )
+    parser.add_argument(
         "--hazardous-only",
         action="store_true",
         help="include only potentially hazardous objects in row-level outputs",
@@ -99,7 +128,35 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="print project setup information and exit without calling NASA",
     )
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="write operational INFO messages to stderr",
+    )
+    parser.add_argument(
+        "--log-file",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="write detailed DEBUG logs to PATH",
+    )
+
+    args = parser.parse_args(argv)
+    if args.end_date is not None and args.end_date < args.start_date:
+        parser.error("--end-date cannot be before --start-date")
+    if args.top is not None and args.sort_by is None:
+        parser.error("--top requires --sort-by")
+    if args.bar_chart and args.sort_by is None:
+        parser.error("--bar-chart requires --sort-by")
+    if args.bar_chart and args.plain:
+        parser.error("--bar-chart cannot be used with --plain")
+    if args.sort_by is not None and not (
+        args.list_objects or args.bar_chart or args.save_processed_csv is not None
+    ):
+        parser.error(
+            "--sort-by requires --list-objects, --bar-chart, or --save-processed-csv"
+        )
+    return args
 
 
 def main() -> None:
@@ -108,6 +165,11 @@ def main() -> None:
     # job, or a hosted environment.
     load_dotenv()
     args = parse_args()
+
+    try:
+        configure_logging(verbose=args.verbose, log_file=args.log_file)
+    except LoggingSetupError as exc:
+        raise SystemExit(str(exc)) from exc
 
     api_key = os.environ.get("NASA_API_KEY", "")
     if args.project_info:
@@ -131,12 +193,23 @@ def main() -> None:
     except NasaApiError as exc:
         raise SystemExit(str(exc)) from exc
 
+    try:
+        if args.save_raw is not None:
+            write_raw_json(feed, args.save_raw)
+            logger.info("Saved raw NASA response to %s.", args.save_raw)
+    except OutputWriteError as exc:
+        raise SystemExit(str(exc)) from exc
+
+    try:
+        objects = extract_objects(feed)
+    except NeoDataValidationError as exc:
+        raise SystemExit(str(exc)) from exc
+
     end_date = args.end_date or args.start_date
     label = args.start_date.isoformat()
     if end_date != args.start_date:
         label = f"{args.start_date.isoformat()} to {end_date.isoformat()}"
 
-    objects = extract_objects(feed)
     summary = summarize_objects(objects)
     filtered_objects = filter_objects(
         objects,
@@ -144,12 +217,14 @@ def main() -> None:
         min_diameter_meters=args.min_diameter_meters,
         max_miss_distance_lunar=args.max_miss_distance_lunar,
     )
+    selected_objects = filtered_objects
+    if args.sort_by is not None:
+        selected_objects = rank_objects(filtered_objects, args.sort_by, args.top)
 
     try:
-        if args.save_raw is not None:
-            write_raw_json(feed, args.save_raw)
         if args.save_processed_csv is not None:
-            write_objects_csv(filtered_objects, args.save_processed_csv)
+            write_objects_csv(selected_objects, args.save_processed_csv)
+            logger.info("Saved processed object rows to %s.", args.save_processed_csv)
     except OutputWriteError as exc:
         raise SystemExit(str(exc)) from exc
 
@@ -157,12 +232,14 @@ def main() -> None:
         print(format_summary(summary, label))
         if args.list_objects:
             print()
-            print(format_object_listing(filtered_objects))
+            print(format_object_listing(selected_objects))
     else:
         console = Console()
         print_rich_summary(console, summary, label)
         if args.list_objects:
-            print_rich_object_listing(console, filtered_objects)
+            print_rich_object_listing(console, selected_objects)
+        if args.bar_chart:
+            print_rich_bar_chart(console, selected_objects, args.sort_by)
 
 
 def _date_arg(value: str) -> date:
@@ -184,4 +261,15 @@ def _nonnegative_float_arg(value: str) -> float:
 
     if parsed < 0:
         raise argparse.ArgumentTypeError(f"{value!r} must be nonnegative")
+    return parsed
+
+
+def _positive_int_arg(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"{value!r} is not a whole number") from exc
+
+    if parsed < 1:
+        raise argparse.ArgumentTypeError(f"{value!r} must be at least 1")
     return parsed

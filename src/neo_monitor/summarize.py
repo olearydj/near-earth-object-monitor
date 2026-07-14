@@ -1,8 +1,21 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
+from datetime import date
+import logging
 from typing import Any
+from typing import Literal
+from typing import Sequence
+
+from pydantic import BaseModel, Field, StrictBool, ValidationError
+
+
+logger = logging.getLogger(__name__)
+SortBy = Literal["closest", "fastest", "largest"]
+
+
+class NeoDataValidationError(ValueError):
+    """Raised when required NASA API data cannot be safely used."""
 
 
 @dataclass(frozen=True)
@@ -34,60 +47,83 @@ class NeoSummary:
     largest: NeoObject | None
 
 
+class _DiameterKilometersInput(BaseModel):
+    estimated_diameter_min: float
+    estimated_diameter_max: float
+
+
+class _EstimatedDiameterInput(BaseModel):
+    kilometers: _DiameterKilometersInput
+
+
+class _MissDistanceInput(BaseModel):
+    kilometers: float
+    lunar: float
+
+
+class _RelativeVelocityInput(BaseModel):
+    kilometers_per_hour: float
+
+
+class _CloseApproachInput(BaseModel):
+    close_approach_date: date
+    miss_distance: _MissDistanceInput
+    relative_velocity: _RelativeVelocityInput
+
+
+class _NeoObjectInput(BaseModel):
+    """Only the external fields needed to create one trusted NeoObject."""
+
+    name: str
+    is_potentially_hazardous_asteroid: StrictBool
+    estimated_diameter: _EstimatedDiameterInput
+    close_approach_data: list[_CloseApproachInput] = Field(min_length=1)
+
+
+class _NeoFeedInput(BaseModel):
+    near_earth_objects: dict[date, list[_NeoObjectInput]]
+
+
 def extract_objects(feed: dict[str, Any]) -> list[NeoObject]:
     """Extract the fields this project currently cares about."""
 
-    # External JSON is messy compared with normal Python objects. This function
-    # converts the nested API response into a predictable list of NeoObject
-    # values. That conversion step is a common pattern in real data projects.
-    by_date = feed.get("near_earth_objects", {})
-    if not isinstance(by_date, dict):
-        return []
+    # External JSON is not yet a trusted project record. Pydantic checks only
+    # the fields used here; after validation, this function converts them into
+    # the small immutable NeoObject dataclass used by the rest of the project.
+    try:
+        validated_feed = _NeoFeedInput.model_validate(feed)
+    except ValidationError as exc:
+        first_problem = exc.errors(include_url=False)[0]
+        location = ".".join(str(part) for part in first_problem["loc"])
+        message = first_problem["msg"]
+        logger.warning("NASA data validation failed at %s: %s", location, message)
+        raise NeoDataValidationError(
+            f"NASA data could not be used at {location}: {message}"
+        ) from exc
 
     objects: list[NeoObject] = []
-
-    # The API groups objects by date. Sorting makes the output deterministic,
-    # which is useful for tests and for comparing runs.
-    for approach_date, daily_objects in sorted(by_date.items()):
-        if not isinstance(daily_objects, list):
-            continue
-
+    for _, daily_objects in sorted(validated_feed.near_earth_objects.items()):
         for raw_object in daily_objects:
-            if not isinstance(raw_object, dict):
-                continue
-
-            close_approaches = raw_object.get("close_approach_data", [])
-            if not close_approaches:
-                continue
-
-            # Many NEOs only have one close approach in the requested feed. For
-            # this first version, use the first approach and keep the behavior
-            # simple rather than modeling every possible approach.
-            close_approach = close_approaches[0]
-            if not isinstance(close_approach, dict):
-                continue
-
+            # The feed's first close approach is the one this introductory
+            # project currently summarizes. The validated list is non-empty.
+            close_approach = raw_object.close_approach_data[0]
+            diameter = raw_object.estimated_diameter.kilometers
             objects.append(
                 NeoObject(
-                    name=str(raw_object.get("name", "unknown object")),
-                    approach_date=str(
-                        close_approach.get("close_approach_date", approach_date)
+                    name=raw_object.name,
+                    approach_date=close_approach.close_approach_date.isoformat(),
+                    hazardous=raw_object.is_potentially_hazardous_asteroid,
+                    diameter_meters=(
+                        (
+                            diameter.estimated_diameter_min
+                            + diameter.estimated_diameter_max
+                        )
+                        / 2
+                        * 1000
                     ),
-                    hazardous=bool(
-                        raw_object.get("is_potentially_hazardous_asteroid", False)
-                    ),
-                    diameter_meters=_estimated_diameter_meters(raw_object),
-                    miss_distance_km=_float_from_nested(
-                        close_approach, "miss_distance", "kilometers"
-                    ),
-                    miss_distance_lunar=_float_from_nested(
-                        close_approach, "miss_distance", "lunar"
-                    ),
-                    velocity_kph=_float_from_nested(
-                        close_approach,
-                        "relative_velocity",
-                        "kilometers_per_hour",
-                    ),
+                    miss_distance_km=close_approach.miss_distance.kilometers,
+                    miss_distance_lunar=close_approach.miss_distance.lunar,
+                    velocity_kph=close_approach.relative_velocity.kilometers_per_hour,
                 )
             )
 
@@ -152,6 +188,24 @@ def filter_objects(
         filtered.append(obj)
 
     return filtered
+
+
+def rank_objects(
+    objects: Sequence[NeoObject], sort_by: SortBy, top: int | None = None
+) -> list[NeoObject]:
+    """Rank objects by one useful field and optionally keep the first rows."""
+
+    if top is not None and top < 1:
+        raise ValueError("top must be at least 1")
+
+    if sort_by == "closest":
+        ranked = sorted(objects, key=lambda obj: obj.miss_distance_lunar)
+    elif sort_by == "fastest":
+        ranked = sorted(objects, key=lambda obj: obj.velocity_kph, reverse=True)
+    else:
+        ranked = sorted(objects, key=lambda obj: obj.diameter_meters, reverse=True)
+
+    return ranked[:top]
 
 
 def format_summary(summary: NeoSummary, label: str) -> str:
@@ -221,38 +275,3 @@ def format_object_listing(objects: Sequence[NeoObject]) -> str:
         )
 
     return "\n".join(rows)
-
-
-def _estimated_diameter_meters(raw_object: dict[str, Any]) -> float:
-    # NASA provides a min and max estimated diameter. Using the midpoint gives
-    # us one number to compare when we report the largest object.
-    diameter = raw_object.get("estimated_diameter", {})
-    if not isinstance(diameter, dict):
-        return 0.0
-
-    kilometers = diameter.get("kilometers", {})
-    if not isinstance(kilometers, dict):
-        return 0.0
-
-    min_km = _float_value(kilometers.get("estimated_diameter_min"))
-    max_km = _float_value(kilometers.get("estimated_diameter_max"))
-    return ((min_km + max_km) / 2) * 1000
-
-
-def _float_from_nested(data: dict[str, Any], section: str, key: str) -> float:
-    # Several useful values are nested two levels deep in the API response.
-    # This helper keeps the repeated dictionary lookup code in one place.
-    section_value = data.get(section, {})
-    if not isinstance(section_value, dict):
-        return 0.0
-    return _float_value(section_value.get(key))
-
-
-def _float_value(value: object) -> float:
-    # JSON values often arrive as strings, even when they represent numbers.
-    # Invalid or missing values become 0.0 so one bad field does not crash the
-    # whole summary.
-    try:
-        return float(str(value))
-    except (TypeError, ValueError):
-        return 0.0

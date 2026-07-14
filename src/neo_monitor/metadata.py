@@ -9,6 +9,7 @@ API_KEY_ENV_VAR = "NASA_API_KEY"
 RECOMMENDED_DATA_DIRS = ("data/raw/", "data/processed/")
 CHECK_COMMANDS = (
     "uv run python -m pytest",
+    "uv run pytest --cov=neo_monitor --cov-report=term-missing",
     "uv run ruff format --check .",
     "uv run ruff check .",
     "uv run mypy src",

@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from rich.console import Console
+from rich import box
+from rich.console import Console, Group
 from rich.panel import Panel
+from rich.progress_bar import ProgressBar
 from rich.table import Table
+from rich.text import Text
 
-from neo_monitor.summarize import NeoObject, NeoSummary
+from neo_monitor.summarize import NeoObject, NeoSummary, SortBy
 
 
 def print_rich_summary(console: Console, summary: NeoSummary, label: str) -> None:
@@ -70,3 +73,95 @@ def print_rich_object_listing(console: Console, objects: Sequence[NeoObject]) ->
         )
 
     console.print(table)
+
+
+def print_rich_bar_chart(
+    console: Console, objects: Sequence[NeoObject], sort_by: SortBy
+) -> None:
+    """Print a ranked, scaled chart while preserving exact object values."""
+
+    if not objects:
+        console.print("[yellow]No near-earth objects matched.[/yellow]")
+        return
+
+    title, metric_label, note, values, value_labels, color = _chart_details(
+        objects, sort_by
+    )
+    maximum = max(values) or 1
+    table = Table(
+        box=box.SIMPLE_HEAVY,
+        expand=True,
+        show_header=True,
+        header_style="bold bright_cyan",
+        row_styles=["", "dim"],
+    )
+    table.add_column("Rank", justify="right", style="bright_cyan", width=5)
+    table.add_column("Object", ratio=3)
+    table.add_column(metric_label, justify="right", width=14)
+    table.add_column("Comparison", ratio=4)
+
+    for rank, (obj, value, value_label) in enumerate(
+        zip(objects, values, value_labels, strict=True), start=1
+    ):
+        name = Text(obj.name, style="bold red" if obj.hazardous else "bold white")
+        if obj.hazardous:
+            name.append("  HAZARDOUS", style="bold red")
+        table.add_row(
+            str(rank),
+            name,
+            value_label,
+            ProgressBar(
+                total=maximum,
+                completed=value,
+                width=28,
+                complete_style=color,
+                finished_style=color,
+            ),
+        )
+
+    caption = Text(note, style="dim")
+    console.print(
+        Panel(
+            Group(table, caption),
+            title=f"[bold]{title}[/bold]",
+            border_style=color,
+            padding=(1, 2),
+        )
+    )
+
+
+def _chart_details(
+    objects: Sequence[NeoObject], sort_by: SortBy
+) -> tuple[str, str, str, list[float], list[str], str]:
+    """Return labels and values for one ranked bar-chart view."""
+
+    if sort_by == "closest":
+        values = [obj.miss_distance_lunar for obj in objects]
+        return (
+            "Closest Approaches",
+            "Miss (LD)",
+            "Lower distance means a closer approach. Bars are scaled to this list.",
+            values,
+            [f"{value:.2f} LD" for value in values],
+            "bright_cyan",
+        )
+    if sort_by == "fastest":
+        values = [obj.velocity_kph for obj in objects]
+        return (
+            "Fastest Objects",
+            "Speed",
+            "Bars are scaled to the fastest object in this list.",
+            values,
+            [f"{value:,.0f} km/h" for value in values],
+            "bright_yellow",
+        )
+
+    values = [obj.diameter_meters for obj in objects]
+    return (
+        "Largest Estimated Objects",
+        "Diameter",
+        "Bars are scaled to the largest object in this list.",
+        values,
+        [f"{value:,.0f} m" for value in values],
+        "bright_magenta",
+    )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import date
 from typing import Any
 
@@ -7,6 +8,7 @@ import requests
 
 
 NASA_NEO_FEED_URL = "https://api.nasa.gov/neo/rest/v1/feed"
+logger = logging.getLogger(__name__)
 
 
 class NasaApiError(RuntimeError):
@@ -36,24 +38,35 @@ def fetch_neo_feed(
     }
 
     try:
+        logger.info(
+            "Requesting NASA NEO feed for %s through %s.",
+            params["start_date"],
+            params["end_date"],
+        )
+        logger.debug("Using a request timeout of %.1f seconds.", timeout)
         # Always include a timeout for external requests. Without one, a CLI can
         # hang indefinitely if the network or remote server stalls.
         response = requests.get(NASA_NEO_FEED_URL, params=params, timeout=timeout)
         response.raise_for_status()
     except requests.HTTPError as exc:
         status = exc.response.status_code if exc.response is not None else "unknown"
+        logger.warning("NASA API request failed with HTTP status %s.", status)
         raise NasaApiError(f"NASA API request failed with status {status}.") from exc
     except requests.RequestException as exc:
+        logger.warning("NASA API request failed: %s", exc)
         raise NasaApiError(f"NASA API request failed: {exc}") from exc
 
     try:
         data = response.json()
     except ValueError as exc:
+        logger.warning("NASA API response was not valid JSON.")
         raise NasaApiError("NASA API response was not valid JSON.") from exc
 
     # Type hints describe what we expect, but API responses come from outside
     # Python. We still need a runtime check before returning the parsed data.
     if not isinstance(data, dict):
+        logger.warning("NASA API response had an unexpected top-level shape.")
         raise NasaApiError("NASA API response had an unexpected shape.")
 
+    logger.debug("NASA API response parsed as a JSON object.")
     return data
