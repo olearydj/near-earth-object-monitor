@@ -1,6 +1,6 @@
 # Near-Earth Object Monitor
 
-A Python command-line tool for collecting, summarizing, filtering, and exporting NASA near-Earth object close-approach data.
+A Python tool for collecting, summarizing, filtering, exporting, and visually exploring NASA near-Earth object close-approach data.
 
 The CLI fetches data from NASA's Near Earth Object Web Service, prints readable terminal summaries and object tables, and can save raw and processed data artifacts for later inspection, testing, and reporting.
 
@@ -13,6 +13,7 @@ The CLI fetches data from NASA's Near Earth Object Web Service, prints readable 
 - Print readable terminal summaries and object tables.
 - Rank selected objects by closest approach, speed, or estimated size.
 - Render ranked objects as a terminal bar chart with Rich.
+- Explore NEO records in a local Streamlit browser dashboard.
 - Print the installed CLI version.
 - Validate the external NASA fields the project uses before creating internal records.
 - Offer optional diagnostic logging without cluttering normal command output.
@@ -47,6 +48,16 @@ Run the CLI:
 ```bash
 uv run neo-monitor --start-date 2026-07-01 --end-date 2026-07-01
 ```
+
+Run the local browser dashboard:
+
+```bash
+uv run streamlit run src/neo_monitor/dashboard.py
+```
+
+The dashboard uses the same `NASA_API_KEY` configuration and trusted project
+logic as the CLI. It provides an interactive comparison chart, ranked view,
+detail table, and explicit downloads for raw JSON and selected CSV rows.
 
 ## Usage
 
@@ -158,6 +169,23 @@ uv run neo-monitor \
 `--verbose` writes `INFO` and higher messages to stderr. `--log-file` includes
 additional `DEBUG` detail in the named file. Use both options to see the
 terminal messages while saving the fuller log.
+
+## Dashboard
+
+Start the local dashboard after configuring `NASA_API_KEY`:
+
+```bash
+uv run streamlit run src/neo_monitor/dashboard.py
+```
+
+Choose a date range, a hazardous-only filter if useful, and a ranking. Select
+**Load near-Earth object data** to make one request. The dashboard shows a
+comparison chart with miss distance, velocity, estimated diameter, and
+hazardous status, plus a ranked view and the selected rows behind the charts.
+
+The command line remains the better interface for repeatable runs,
+automation, and writing artifacts to named paths. The dashboard is for a
+person who wants to explore a requested result in a browser.
 
 Check local project setup without calling NASA:
 

@@ -10,7 +10,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from rich.console import Console
 
-from neo_monitor.api import NasaApiError, fetch_neo_feed
+from neo_monitor.api import NasaApiError
 from neo_monitor.display import (
     print_rich_bar_chart,
     print_rich_object_listing,
@@ -25,12 +25,13 @@ from neo_monitor.metadata import (
 from neo_monitor.output import OutputWriteError, write_objects_csv, write_raw_json
 from neo_monitor.summarize import (
     NeoDataValidationError,
-    extract_objects,
-    filter_objects,
     format_object_listing,
     format_summary,
-    rank_objects,
-    summarize_objects,
+)
+from neo_monitor.workflow import (
+    MonitorRequest,
+    build_monitor_result,
+    fetch_monitor_feed,
 )
 
 
@@ -185,12 +186,17 @@ def main() -> None:
         # The CLI coordinates the workflow: read configuration, fetch data,
         # summarize it, and print the result. The detailed API and summary logic
         # live in smaller functions that are easier to test.
-        feed = fetch_neo_feed(
-            api_key=api_key,
+        request = MonitorRequest(
             start_date=args.start_date,
             end_date=args.end_date,
+            hazardous_only=args.hazardous_only,
+            min_diameter_meters=args.min_diameter_meters,
+            max_miss_distance_lunar=args.max_miss_distance_lunar,
+            sort_by=args.sort_by,
+            top=args.top,
         )
-    except NasaApiError as exc:
+        feed = fetch_monitor_feed(api_key, request)
+    except (NasaApiError, ValueError) as exc:
         raise SystemExit(str(exc)) from exc
 
     try:
@@ -201,45 +207,32 @@ def main() -> None:
         raise SystemExit(str(exc)) from exc
 
     try:
-        objects = extract_objects(feed)
-    except NeoDataValidationError as exc:
+        result = build_monitor_result(
+            feed,
+            request,
+        )
+    except (NeoDataValidationError, ValueError) as exc:
         raise SystemExit(str(exc)) from exc
-
-    end_date = args.end_date or args.start_date
-    label = args.start_date.isoformat()
-    if end_date != args.start_date:
-        label = f"{args.start_date.isoformat()} to {end_date.isoformat()}"
-
-    summary = summarize_objects(objects)
-    filtered_objects = filter_objects(
-        objects,
-        hazardous_only=args.hazardous_only,
-        min_diameter_meters=args.min_diameter_meters,
-        max_miss_distance_lunar=args.max_miss_distance_lunar,
-    )
-    selected_objects = filtered_objects
-    if args.sort_by is not None:
-        selected_objects = rank_objects(filtered_objects, args.sort_by, args.top)
 
     try:
         if args.save_processed_csv is not None:
-            write_objects_csv(selected_objects, args.save_processed_csv)
+            write_objects_csv(result.selected_objects, args.save_processed_csv)
             logger.info("Saved processed object rows to %s.", args.save_processed_csv)
     except OutputWriteError as exc:
         raise SystemExit(str(exc)) from exc
 
     if args.plain:
-        print(format_summary(summary, label))
+        print(format_summary(result.summary, result.label))
         if args.list_objects:
             print()
-            print(format_object_listing(selected_objects))
+            print(format_object_listing(result.selected_objects))
     else:
         console = Console()
-        print_rich_summary(console, summary, label)
+        print_rich_summary(console, result.summary, result.label)
         if args.list_objects:
-            print_rich_object_listing(console, selected_objects)
+            print_rich_object_listing(console, result.selected_objects)
         if args.bar_chart:
-            print_rich_bar_chart(console, selected_objects, args.sort_by)
+            print_rich_bar_chart(console, result.selected_objects, args.sort_by)
 
 
 def _date_arg(value: str) -> date:

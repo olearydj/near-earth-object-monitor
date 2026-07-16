@@ -1,7 +1,7 @@
 [project]
 name = "near-earth-object-monitor"
-version = "0.3.0"
-description = "Command-line summary tool for NASA near-Earth object API data."
+version = "0.4.0"
+description = "CLI and dashboard for NASA near-Earth object API data."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -9,6 +9,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "requests>=2.32",
     "rich>=15.0.0",
+    "streamlit>=1.59.1",
 ]
 
 [project.scripts]
@@ -38,3 +39,7 @@ src = ["src", "tests"]
 python_version = "3.11"
 strict = true
 files = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["streamlit", "streamlit.*"]
+follow_imports = "skip"

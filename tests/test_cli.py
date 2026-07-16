@@ -37,7 +37,7 @@ def test_project_info_is_a_no_network_smoke_test(monkeypatch, capsys):
     def unexpected_network_call(**kwargs):
         raise AssertionError(f"unexpected network call: {kwargs}")
 
-    monkeypatch.setattr(cli, "fetch_neo_feed", unexpected_network_call)
+    monkeypatch.setattr(cli, "fetch_monitor_feed", unexpected_network_call)
     monkeypatch.setattr(sys, "argv", ["neo-monitor", "--project-info"])
 
     cli.main()
@@ -54,7 +54,7 @@ def test_cli_runs_several_parts_together_with_controlled_data(
     csv_path = tmp_path / "processed" / "neo-objects.csv"
 
     monkeypatch.setenv("NASA_API_KEY", "test-key")
-    monkeypatch.setattr(cli, "fetch_neo_feed", lambda **kwargs: fixture_data)
+    monkeypatch.setattr(cli, "fetch_monitor_feed", lambda *_args: fixture_data)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -90,7 +90,7 @@ def test_cli_can_render_a_rich_bar_chart_with_controlled_data(monkeypatch, capsy
     fixture_data = json.loads(fixture_path.read_text())
 
     monkeypatch.setenv("NASA_API_KEY", "test-key")
-    monkeypatch.setattr(cli, "fetch_neo_feed", lambda **kwargs: fixture_data)
+    monkeypatch.setattr(cli, "fetch_monitor_feed", lambda *_args: fixture_data)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -120,7 +120,7 @@ def test_cli_saves_raw_evidence_before_reporting_bad_external_data(
     raw_path = tmp_path / "raw" / "bad-neo-feed.json"
 
     monkeypatch.setenv("NASA_API_KEY", "test-key")
-    monkeypatch.setattr(cli, "fetch_neo_feed", lambda **kwargs: invalid_data)
+    monkeypatch.setattr(cli, "fetch_monitor_feed", lambda *_args: invalid_data)
     monkeypatch.setattr(
         sys,
         "argv",

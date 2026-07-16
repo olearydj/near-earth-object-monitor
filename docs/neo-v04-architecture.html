@@ -1,0 +1,204 @@
+<div id="neo-v04-architecture">
+  <style>
+    #neo-v04-architecture {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    #neo-v04-architecture .arch-controls {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    #neo-v04-architecture .arch-diagram {
+      display: block;
+      inline-size: 100%;
+      max-inline-size: 760px;
+      margin-inline: auto;
+    }
+
+    #neo-v04-architecture .node-box {
+      fill: var(--card, Canvas);
+      stroke: var(--border, GrayText);
+      stroke-width: 1.5;
+    }
+
+    #neo-v04-architecture .node-title {
+      fill: var(--foreground, CanvasText);
+      font: 500 16px system-ui, sans-serif;
+    }
+
+    #neo-v04-architecture .node-note,
+    #neo-v04-architecture .edge-label {
+      fill: var(--muted-foreground, GrayText);
+      font: 13px system-ui, sans-serif;
+    }
+
+    #neo-v04-architecture .edge {
+      fill: none;
+      color: var(--border, GrayText);
+      stroke: var(--border, GrayText);
+      stroke-width: 2;
+      marker-end: url(#neo-arrow);
+    }
+
+    #neo-v04-architecture .return-edge {
+      fill: none;
+      color: var(--border, GrayText);
+      stroke: var(--border, GrayText);
+      stroke-width: 1.5;
+      marker-end: url(#neo-arrow);
+    }
+
+    #neo-v04-architecture .node,
+    #neo-v04-architecture .edge,
+    #neo-v04-architecture .return-edge,
+    #neo-v04-architecture .edge-label {
+      transition: opacity 180ms ease, stroke 180ms ease, fill 180ms ease;
+    }
+
+    #neo-v04-architecture.is-filtered .node,
+    #neo-v04-architecture.is-filtered .edge,
+    #neo-v04-architecture.is-filtered .return-edge,
+    #neo-v04-architecture.is-filtered .edge-label {
+      opacity: 0.24;
+    }
+
+    #neo-v04-architecture .node.is-active .node-box {
+      fill: color-mix(in srgb, var(--viz-series-1, Highlight) 18%, var(--card, Canvas));
+      stroke: var(--viz-series-1, Highlight);
+      stroke-width: 2.5;
+    }
+
+    #neo-v04-architecture .edge.is-active,
+    #neo-v04-architecture .return-edge.is-active {
+      opacity: 1;
+      color: var(--viz-series-1, Highlight);
+      stroke: var(--viz-series-1, Highlight);
+      stroke-width: 3;
+    }
+
+    #neo-v04-architecture .arch-detail {
+      min-block-size: 1.5rem;
+      text-align: center;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #neo-v04-architecture .node,
+      #neo-v04-architecture .edge,
+      #neo-v04-architecture .return-edge,
+      #neo-v04-architecture .edge-label {
+        transition: none;
+      }
+    }
+  </style>
+
+  <div class="arch-controls viz-controls">
+    <label class="form-label" for="neo-path">Trace a path</label>
+    <select class="form-select" id="neo-path" name="neo-path">
+      <option value="all">Show the whole application</option>
+      <option value="cli">Command-line path</option>
+      <option value="dashboard">Dashboard path</option>
+      <option value="boundary">NASA API boundary</option>
+      <option value="results">Trusted results and outputs</option>
+    </select>
+  </div>
+
+  <svg class="arch-diagram" viewBox="0 0 760 540" role="img" aria-labelledby="neo-map-title neo-map-desc">
+    <title id="neo-map-title">Near-Earth Object Monitor version 0.4 architecture</title>
+    <desc id="neo-map-desc">The command line and Streamlit dashboard use the same workflow. It calls the NASA API client, turns the response into validated results, and sends those results back to each interface for presentation or saved output.</desc>
+    <defs>
+      <marker id="neo-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path>
+      </marker>
+    </defs>
+
+    <path class="edge cli" d="M 185 107 L 300 162"></path>
+    <path class="edge dashboard" d="M 575 107 L 460 162"></path>
+    <path class="edge cli dashboard boundary" d="M 380 214 L 380 258"></path>
+    <path class="edge cli dashboard boundary" d="M 485 296 L 565 296"></path>
+    <path class="return-edge cli dashboard boundary" d="M 565 322 L 485 322"></path>
+    <path class="edge cli dashboard results" d="M 380 348 L 380 390"></path>
+    <path class="edge cli results" d="M 310 445 L 195 470"></path>
+    <path class="edge dashboard results" d="M 450 445 L 565 470"></path>
+
+    <text class="edge-label boundary" x="505" y="286">request</text>
+    <text class="edge-label boundary" x="500" y="343">raw feed</text>
+
+    <g class="node cli" data-node="cli">
+      <rect class="node-box" x="65" y="45" width="190" height="62" rx="8"></rect>
+      <text class="node-title" x="160" y="71" text-anchor="middle">Command line</text>
+      <text class="node-note" x="160" y="92" text-anchor="middle">arguments and options</text>
+    </g>
+
+    <g class="node dashboard" data-node="dashboard">
+      <rect class="node-box" x="505" y="45" width="190" height="62" rx="8"></rect>
+      <text class="node-title" x="600" y="71" text-anchor="middle">Streamlit dashboard</text>
+      <text class="node-note" x="600" y="92" text-anchor="middle">form and browser session</text>
+    </g>
+
+    <g class="node cli dashboard boundary" data-node="workflow">
+      <rect class="node-box" x="270" y="162" width="220" height="52" rx="8"></rect>
+      <text class="node-title" x="380" y="184" text-anchor="middle">Shared workflow</text>
+      <text class="node-note" x="380" y="203" text-anchor="middle">MonitorRequest → fetch → build result</text>
+    </g>
+
+    <g class="node cli dashboard boundary" data-node="api">
+      <rect class="node-box" x="275" y="258" width="210" height="90" rx="8"></rect>
+      <text class="node-title" x="380" y="284" text-anchor="middle">API client</text>
+      <text class="node-note" x="380" y="305" text-anchor="middle">fetch_neo_feed()</text>
+      <text class="node-note" x="380" y="326" text-anchor="middle">timeouts, clear failures, logging</text>
+    </g>
+
+    <g class="node cli dashboard boundary" data-node="nasa">
+      <rect class="node-box" x="565" y="268" width="130" height="58" rx="8"></rect>
+      <text class="node-title" x="630" y="292" text-anchor="middle">NASA NEO API</text>
+      <text class="node-note" x="630" y="312" text-anchor="middle">external data</text>
+    </g>
+
+    <g class="node cli dashboard results" data-node="results">
+      <rect class="node-box" x="260" y="390" width="240" height="55" rx="8"></rect>
+      <text class="node-title" x="380" y="413" text-anchor="middle">Trusted monitor result</text>
+      <text class="node-note" x="380" y="433" text-anchor="middle">validated objects, summary, selected rows</text>
+    </g>
+
+    <g class="node cli results" data-node="cli-output">
+      <rect class="node-box" x="45" y="470" width="220" height="54" rx="8"></rect>
+      <text class="node-title" x="155" y="493" text-anchor="middle">Terminal output</text>
+      <text class="node-note" x="155" y="512" text-anchor="middle">Rich display, raw JSON, CSV</text>
+    </g>
+
+    <g class="node dashboard results" data-node="dashboard-output">
+      <rect class="node-box" x="495" y="470" width="220" height="54" rx="8"></rect>
+      <text class="node-title" x="605" y="493" text-anchor="middle">Browser output</text>
+      <text class="node-note" x="605" y="512" text-anchor="middle">metrics, charts, table, downloads</text>
+    </g>
+  </svg>
+
+  <p class="arch-detail text-muted" id="neo-path-detail" aria-live="polite">Both interfaces use the same workflow rather than duplicating the NASA request and data-processing steps.</p>
+
+  <script>
+    (() => {
+      const root = document.getElementById("neo-v04-architecture");
+      const select = root.querySelector("#neo-path");
+      const detail = root.querySelector("#neo-path-detail");
+      const descriptions = {
+        all: "Both interfaces use the same workflow rather than duplicating the NASA request and data-processing steps.",
+        cli: "The command line turns arguments into a request, then presents or saves the shared result.",
+        dashboard: "The dashboard turns form input into the same request, keeps the result in the browser session, then renders it.",
+        boundary: "Only the API client crosses the external boundary. It requests NASA data and returns the raw feed for validation.",
+        results: "The workflow turns the raw feed into validated objects, a summary, and selected rows before either interface presents them."
+      };
+      const activate = (path) => {
+        const filtered = path !== "all";
+        root.classList.toggle("is-filtered", filtered);
+        root.querySelectorAll(".node, .edge, .return-edge, .edge-label").forEach((element) => {
+          element.classList.toggle("is-active", filtered && element.classList.contains(path));
+        });
+        detail.textContent = descriptions[path];
+      };
+      select.addEventListener("change", () => activate(select.value));
+      activate(select.value);
+    })();
+  </script>
+</div>
