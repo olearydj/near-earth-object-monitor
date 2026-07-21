@@ -1,3 +1,5 @@
+"""Validate NASA feed data and derive the project's trusted NEO records."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -20,7 +22,17 @@ class NeoDataValidationError(ValueError):
 
 @dataclass(frozen=True)
 class NeoObject:
-    """Selected fields for one near-earth object close approach."""
+    """Selected, validated fields for one near-earth object close approach.
+
+    Attributes:
+        name: NASA's display name for the object.
+        approach_date: Close-approach date in ``YYYY-MM-DD`` form.
+        hazardous: NASA's potentially-hazardous-asteroid classification.
+        diameter_meters: Mean of NASA's estimated diameter bounds, in meters.
+        miss_distance_km: Predicted miss distance in kilometers.
+        miss_distance_lunar: Miss distance in average Earth-Moon distances.
+        velocity_kph: Relative velocity in kilometers per hour.
+    """
 
     # A dataclass is a lightweight way to name the fields we care about. The
     # NASA response contains much more data, but keeping a smaller shape makes
@@ -36,7 +48,11 @@ class NeoObject:
 
 @dataclass(frozen=True)
 class NeoSummary:
-    """Summary values for a NASA near-earth object feed response."""
+    """Unfiltered summary values for one validated NEO feed.
+
+    ``closest``, ``fastest``, and ``largest`` are ``None`` when the feed has no
+    objects. Row-level filters do not change this full-feed summary.
+    """
 
     # These are the values the CLI currently reports. Storing them together
     # keeps formatting separate from the calculations that produce the summary.
@@ -85,7 +101,16 @@ class _NeoFeedInput(BaseModel):
 
 
 def extract_objects(feed: dict[str, Any]) -> list[NeoObject]:
-    """Extract the fields this project currently cares about."""
+    """Validate external feed data and create trusted project records.
+
+    The project uses the first close-approach entry supplied for each object and
+    derives ``diameter_meters`` from the mean of NASA's minimum and maximum
+    estimated diameters.
+
+    Raises:
+        NeoDataValidationError: If a required external field is missing or has
+        an unusable type or value. Required values are never imputed.
+    """
 
     # External JSON is not yet a trusted project record. Pydantic checks only
     # the fields used here; after validation, this function converts them into
@@ -131,7 +156,7 @@ def extract_objects(feed: dict[str, Any]) -> list[NeoObject]:
 
 
 def summarize_objects(objects: list[NeoObject]) -> NeoSummary:
-    """Create the current high-level report summary."""
+    """Create full-feed counts and notable objects from trusted records."""
 
     # This is a pure function: the result depends only on the objects passed in.
     # It does not read files, call an API, print output, or modify global state.
@@ -169,7 +194,7 @@ def filter_objects(
     min_diameter_meters: float | None = None,
     max_miss_distance_lunar: float | None = None,
 ) -> list[NeoObject]:
-    """Filter extracted near-earth objects for row-level outputs."""
+    """Select records for row-level views without changing the feed summary."""
 
     filtered: list[NeoObject] = []
     for obj in objects:
@@ -193,7 +218,14 @@ def filter_objects(
 def rank_objects(
     objects: Sequence[NeoObject], sort_by: SortBy, top: int | None = None
 ) -> list[NeoObject]:
-    """Rank objects by one useful field and optionally keep the first rows."""
+    """Rank records by one documented metric and optionally limit the result.
+
+    ``closest`` sorts miss distance ascending; ``fastest`` and ``largest`` sort
+    their metrics descending. The input sequence is not modified.
+
+    Raises:
+        ValueError: If ``top`` is less than one.
+    """
 
     if top is not None and top < 1:
         raise ValueError("top must be at least 1")

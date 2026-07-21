@@ -20,7 +20,11 @@ from neo_monitor.summarize import (
 
 @dataclass(frozen=True)
 class MonitorRequest:
-    """User-selected options for turning one NASA feed into NEO results."""
+    """User-selected options shared by the CLI and dashboard.
+
+    A request describes dates and row-level selection. Validation here keeps
+    interface-specific code from creating impossible workflow states.
+    """
 
     start_date: date
     end_date: date | None = None
@@ -41,7 +45,11 @@ class MonitorRequest:
 
 @dataclass(frozen=True)
 class MonitorResult:
-    """Trusted records and derived values for one requested NASA feed."""
+    """Raw evidence and derived values for one completed request.
+
+    ``summary`` and ``objects`` describe the full validated feed;
+    ``selected_objects`` reflects the request's filters, ranking, and limit.
+    """
 
     raw_feed: dict[str, Any]
     label: str
@@ -51,7 +59,12 @@ class MonitorResult:
 
 
 def fetch_monitor_feed(api_key: str, request: MonitorRequest) -> dict[str, Any]:
-    """Fetch the raw NASA feed for one shared monitor request."""
+    """Fetch raw NASA data for a shared request without transforming it.
+
+    Raises:
+        NasaApiError: Propagated from the external API boundary when the request
+        or response is unusable.
+    """
 
     return fetch_neo_feed(
         api_key=api_key,
@@ -63,7 +76,21 @@ def fetch_monitor_feed(api_key: str, request: MonitorRequest) -> dict[str, Any]:
 def build_monitor_result(
     feed: dict[str, Any], request: MonitorRequest
 ) -> MonitorResult:
-    """Validate, summarize, filter, and optionally rank one NASA feed."""
+    """Validate, summarize, select, and optionally rank one NASA feed.
+
+    Args:
+        feed: Decoded raw NASA response retained in the returned result.
+        request: Date label and row-level selection requested by the interface.
+
+    Returns:
+        A result that keeps raw evidence, the unfiltered summary, all trusted
+        records, and the selected records distinct.
+
+    Raises:
+        NeoDataValidationError: If required NASA fields cannot create trusted
+        project records.
+        ValueError: If ranking or request constraints are invalid.
+    """
 
     objects = tuple(extract_objects(feed))
     selected_objects = tuple(

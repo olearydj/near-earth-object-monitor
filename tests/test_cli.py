@@ -17,6 +17,18 @@ def test_version_option_prints_version_and_exits(capsys):
     assert capsys.readouterr().out == f"neo-monitor {package_version()}\n"
 
 
+def test_help_includes_examples_defaults_and_configuration(capsys):
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args(["--help"])
+
+    assert exc_info.value.code == 0
+    help_text = " ".join(capsys.readouterr().out.split())
+    assert "examples:" in help_text
+    assert "--start-date 2026-07-01" in help_text
+    assert "default: today" in help_text
+    assert "NASA_API_KEY" in help_text
+
+
 def test_parse_args_rejects_a_date_range_that_ends_before_it_starts(capsys):
     with pytest.raises(SystemExit) as exc_info:
         parse_args(["--start-date", "2026-07-03", "--end-date", "2026-07-02"])

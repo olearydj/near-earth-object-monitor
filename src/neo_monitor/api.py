@@ -1,3 +1,5 @@
+"""NASA NEO Feed client and the project's external network boundary."""
+
 from __future__ import annotations
 
 import logging
@@ -21,7 +23,22 @@ def fetch_neo_feed(
     end_date: date | None = None,
     timeout: float = 15.0,
 ) -> dict[str, Any]:
-    """Fetch near-earth object close-approach data from NASA."""
+    """Fetch one date range from NASA's NEO Feed API.
+
+    Args:
+        api_key: NASA API key. Blank values are rejected before any request.
+        start_date: First close-approach date to request.
+        end_date: Last date to request; defaults to ``start_date``.
+        timeout: Maximum seconds to wait for the HTTP request.
+
+    Returns:
+        The decoded top-level JSON object. Its domain fields are validated at
+        the later transformation boundary in `neo_monitor.summarize`.
+
+    Raises:
+        NasaApiError: If configuration, transport, HTTP status, JSON decoding,
+        or the top-level response shape is unusable.
+    """
 
     # This function is the network boundary of the program. Keeping the live
     # HTTP request here makes the rest of the project easier to test with saved

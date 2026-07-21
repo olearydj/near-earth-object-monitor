@@ -1,3 +1,5 @@
+"""Command-line interface for repeatable NEO data requests and exports."""
+
 from __future__ import annotations
 
 import argparse
@@ -36,15 +38,39 @@ from neo_monitor.workflow import (
 
 
 logger = logging.getLogger(__name__)
+CLI_HELP_EPILOG = """examples:
+  neo-monitor --start-date 2026-07-01 --end-date 2026-07-03
+  neo-monitor --list-objects --sort-by closest --top 5
+  neo-monitor --save-raw data/raw/feed.json --save-processed-csv data/processed/neos.csv
+  neo-monitor --project-info
+
+configuration:
+  Set NASA_API_KEY in the environment or in a local .env file.
+  Run neo-monitor --project-info to check setup without calling NASA.
+"""
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    """Parse and validate command-line options.
+
+    Args:
+        argv: Arguments without the program name. Uses ``sys.argv`` when omitted.
+
+    Returns:
+        Validated options ready for the command workflow.
+
+    Raises:
+        SystemExit: If argparse handles ``--help`` or finds invalid options.
+    """
+
     # argparse handles command-line parsing, help text, and error messages. The
     # rest of the program can work with normal Python values instead of raw
     # strings from the terminal.
     parser = argparse.ArgumentParser(
         prog="neo-monitor",
         description="Summarize NASA near-earth object close-approach data.",
+        epilog=CLI_HELP_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "--version",
@@ -55,13 +81,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--start-date",
         type=_date_arg,
         default=date.today(),
-        help="first date to request, in YYYY-MM-DD format",
+        help="first date to request, in YYYY-MM-DD format (default: today)",
     )
     parser.add_argument(
         "--end-date",
         type=_date_arg,
         default=None,
-        help="last date to request, in YYYY-MM-DD format",
+        help="last date to request, in YYYY-MM-DD format (default: start date)",
     )
     parser.add_argument(
         "--save-raw",
@@ -161,6 +187,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 def main() -> None:
+    """Run one CLI request and translate expected failures into concise errors."""
+
     # load_dotenv reads a local .env file if one exists. Environment variables
     # are still the source of truth, so the same code works in a shell, a CI
     # job, or a hosted environment.

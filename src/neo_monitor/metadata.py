@@ -1,3 +1,5 @@
+"""Safe, no-network project metadata for setup and maintenance checks."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -18,7 +20,11 @@ CHECK_COMMANDS = (
 
 @dataclass(frozen=True)
 class ProjectMetadata:
-    """Small project state summary for setup and handoff checks."""
+    """Non-secret project state suitable for terminal display.
+
+    The record reports whether an API key exists but never stores or displays
+    the key itself.
+    """
 
     package_name: str
     version: str
@@ -29,7 +35,7 @@ class ProjectMetadata:
 
 
 def build_project_metadata(api_key: str | None) -> ProjectMetadata:
-    """Build project metadata without calling external services."""
+    """Build a project status record without calling external services."""
 
     return ProjectMetadata(
         package_name=PACKAGE_NAME,

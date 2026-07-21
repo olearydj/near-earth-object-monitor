@@ -31,7 +31,7 @@ NASA's `DEMO_KEY` is enough for quick local testing, but it is rate-limited. Req
 ## Quick Start
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/olearydj/near-earth-object-monitor.git
 cd near-earth-object-monitor
 uv sync
 cp .env.example .env
@@ -49,6 +49,9 @@ Run the CLI:
 uv run neo-monitor --start-date 2026-07-01 --end-date 2026-07-01
 ```
 
+The command prints a summary containing the requested date range, the number of
+objects observed, and the closest, fastest, and largest objects in the feed.
+
 Run the local browser dashboard:
 
 ```bash
@@ -60,6 +63,12 @@ logic as the CLI. It provides an interactive comparison chart, ranked view,
 detail table, and explicit downloads for raw JSON and selected CSV rows.
 
 ## Usage
+
+Show the complete command reference and examples:
+
+```bash
+uv run neo-monitor --help
+```
 
 Summarize one day:
 
@@ -203,6 +212,45 @@ export NASA_API_KEY=your_api_key_here
 
 The `.env` file is ignored by Git so API keys do not get committed.
 
+## Outputs and Documentation
+
+- Raw JSON is a complete, readable copy of the NASA response. Save it when
+  provenance or later troubleshooting matters.
+- Processed CSV contains the smaller, validated record used by the project.
+  See the [data dictionary](docs/data-dictionary.md) for fields, units, and
+  transformation rules.
+- Start with the [documentation map](docs/index.md) for architecture artifacts,
+  sprint specifications, and maintainer-facing references.
+- Runtime diagnostics go to the terminal with `--verbose` or to a requested
+  file with `--log-file`. Logs are ignored by Git and must not contain API keys
+  or private data.
+
+## Troubleshooting
+
+**`NASA_API_KEY is required`**
+
+Copy `.env.example` to `.env`, add a key, and run
+`uv run neo-monitor --project-info`. The status command reports whether a key is
+configured without displaying its value or calling NASA.
+
+**NASA rejects or rate-limits a request**
+
+Confirm the date range and key. `DEMO_KEY` is intentionally rate-limited; use a
+personal key for regular work. Add `--verbose` or `--log-file logs/neo.log` for
+diagnostic context.
+
+**NASA data cannot be used**
+
+The project validates the external fields it depends on. Add
+`--save-raw data/raw/failed-response.json` to preserve the original response
+before validation so the mismatch can be inspected.
+
+**No rows match a filter**
+
+The unfiltered summary can still contain objects even when a row-level filter
+selects none. Relax `--hazardous-only`, `--min-diameter-meters`, or
+`--max-miss-distance-lunar` and rerun the command.
+
 ## Development
 
 Install dependencies:
@@ -240,21 +288,26 @@ uv run mypy src
 │       ├── __main__.py     # python -m neo_monitor entry point
 │       ├── api.py          # NASA API client
 │       ├── cli.py          # command-line interface
+│       ├── dashboard.py    # Streamlit browser interface
 │       ├── display.py      # terminal presentation helpers
 │       ├── logging_config.py # optional diagnostic logging
-│       ├── metadata.py     # setup and handoff information
+│       ├── metadata.py     # setup and project information
 │       ├── output.py       # file output helpers
-│       └── summarize.py    # data transformation and summary logic
+│       ├── summarize.py    # data transformation and summary logic
+│       └── workflow.py     # shared request-to-result coordination
+├── docs/
+│   ├── data-dictionary.md  # processed data fields and derivations
+│   ├── index.md            # documentation map
+│   └── specs/              # completed sprint specifications
 ├── tests/
 │   ├── fixtures/
-│   ├── test_api.py
-│   ├── test_cli.py
-│   ├── test_metadata.py
-│   └── test_summarize.py
+│   └── test_*.py           # executable behavior examples
 ├── data/
 │   ├── raw/                # generated raw API responses, ignored by Git
 │   └── processed/          # generated processed outputs, ignored by Git
 ├── .env.example
+├── AGENTS.md
+├── LICENSE
 ├── pyproject.toml
 └── README.md
 ```
@@ -268,3 +321,11 @@ commands. Small stable examples used by tests belong under `tests/fixtures/`.
 Data comes from NASA's Near Earth Object Web Service:
 
 <https://api.nasa.gov/>
+
+NASA is the source of names, approach dates, hazard flags, estimated diameter
+ranges, miss distances, and relative velocities. The project-specific
+derivations are documented in the [data dictionary](docs/data-dictionary.md).
+
+## License
+
+This project is available under the [MIT License](LICENSE).

@@ -1,3 +1,5 @@
+"""Rich terminal views for trusted summaries and NEO records."""
+
 from __future__ import annotations
 
 from collections.abc import Sequence

@@ -1,3 +1,5 @@
+"""Support ``python -m neo_monitor`` as an alternative CLI entry point."""
+
 from neo_monitor.cli import main
 
 
