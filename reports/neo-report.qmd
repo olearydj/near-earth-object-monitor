@@ -1,0 +1,424 @@
+---
+title: "Weekly Near-Earth Object Monitoring Report"
+subtitle: "A reproducible summary of NASA NEO Feed data"
+author:
+  name: "INSY 7970"
+  affiliation: "Auburn University"
+date: today
+date-format: long
+abstract: |
+  This report summarizes near-Earth objects with predicted close approaches
+  during the current calendar week. It acquires data through the project's
+  NASA API boundary, preserves a credential-sanitized copy of the response,
+  validates the fields used in analysis, and renders narrative, tables, and
+  figures from the same trusted records. The report is an instructional
+  monitoring product, not an impact risk assessment.
+keywords:
+  - near-Earth objects
+  - reproducible reporting
+  - scientific Python
+  - NASA
+license: "MIT"
+bibliography: references.bib
+format:
+  pdf:
+    toc: true
+    number-sections: true
+jupyter: python3
+execute:
+  echo: false
+  warning: false
+---
+
+```{python}
+#| label: prepare-report
+#| include: false
+
+from dataclasses import asdict
+from datetime import date, datetime, timedelta, timezone
+from hashlib import sha256
+from importlib.metadata import version as package_version
+import json
+import os
+from pathlib import Path
+import platform
+import subprocess
+
+import pandas as pd
+from dotenv import load_dotenv
+from IPython.display import Markdown, display
+from plotnine import (
+    aes,
+    geom_point,
+    ggplot,
+    labs,
+    scale_x_log10,
+    scale_y_log10,
+    theme_minimal,
+)
+
+from neo_monitor.api import NASA_NEO_FEED_URL
+from neo_monitor.output import write_raw_json
+from neo_monitor.workflow import (
+    MonitorRequest,
+    build_monitor_result,
+    fetch_monitor_feed,
+)
+
+
+def find_project_root(start: Path) -> Path:
+    """Find the repository root from Quarto's execution directory."""
+
+    for candidate in (start, *start.parents):
+        if (candidate / "pyproject.toml").is_file():
+            return candidate
+    raise RuntimeError("Could not locate the project root.")
+
+
+def command_output(*command: str) -> str:
+    """Return short provenance output without interrupting the report."""
+
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=project_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return "unavailable"
+    return completed.stdout.strip() or "unavailable"
+
+
+project_root = find_project_root(Path.cwd().resolve())
+load_dotenv(project_root / ".env")
+
+today = date.today()
+week_start = today - timedelta(days=today.weekday())
+week_end = week_start + timedelta(days=6)
+request = MonitorRequest(
+    start_date=week_start,
+    end_date=week_end,
+    sort_by="closest",
+    top=8,
+)
+
+range_slug = f"{week_start.isoformat()}-to-{week_end.isoformat()}"
+raw_path = project_root / "data" / "raw" / f"neo-{range_slug}.json"
+metadata_path = raw_path.with_name(f"neo-{range_slug}-metadata.json")
+refresh_requested = os.getenv("NEO_REPORT_REFRESH", "").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+
+if raw_path.is_file() and not refresh_requested:
+    feed = json.loads(raw_path.read_text(encoding="utf-8"))
+    acquisition_mode = "Reused the saved weekly response"
+    if metadata_path.is_file():
+        acquisition_metadata = json.loads(
+            metadata_path.read_text(encoding="utf-8")
+        )
+        acquired_at = datetime.fromisoformat(
+            acquisition_metadata["acquired_at_utc"]
+        )
+    else:
+        acquired_at = datetime.fromtimestamp(
+            raw_path.stat().st_mtime,
+            tz=timezone.utc,
+        ).replace(microsecond=0)
+        acquisition_metadata = {}
+else:
+    api_key = os.getenv("NASA_API_KEY", "").strip() or "DEMO_KEY"
+    acquired_at = datetime.now(timezone.utc).replace(microsecond=0)
+    feed = fetch_monitor_feed(api_key, request)
+    acquisition_mode = "Downloaded a new weekly response"
+    acquisition_metadata = {}
+
+# Rewriting through the shared output helper also redacts any API-key value
+# echoed by NASA inside response-link metadata.
+write_raw_json(feed, raw_path)
+raw_digest = sha256(raw_path.read_bytes()).hexdigest()
+acquisition_metadata.update(
+    {
+        "source": NASA_NEO_FEED_URL,
+        "request_start_date": week_start.isoformat(),
+        "request_end_date": week_end.isoformat(),
+        "acquired_at_utc": acquired_at.isoformat(),
+        "raw_sha256": raw_digest,
+    }
+)
+metadata_path.write_text(
+    json.dumps(acquisition_metadata, indent=2, sort_keys=True) + "\n",
+    encoding="utf-8",
+)
+
+result = build_monitor_result(feed, request)
+summary = result.summary
+report_generated_at = datetime.now(timezone.utc).replace(microsecond=0)
+
+object_rows = [asdict(obj) for obj in result.objects]
+objects_df = pd.DataFrame(object_rows)
+closest_rows = [
+    {
+        "Object": obj.name,
+        "Approach": obj.approach_date,
+        "Hazardous": "Yes" if obj.hazardous else "No",
+        "Diameter (m)": f"{obj.diameter_meters:,.0f}",
+        "Miss distance (LD)": f"{obj.miss_distance_lunar:,.2f}",
+    }
+    for obj in result.selected_objects
+]
+closest_table = pd.DataFrame(closest_rows)
+
+if not objects_df.empty:
+    objects_df["Hazard classification"] = objects_df["hazardous"].map(
+        {True: "Potentially hazardous", False: "Not potentially hazardous"}
+    )
+
+period_text = (
+    f"{week_start:%B} {week_start.day} through "
+    f"{week_end:%B} {week_end.day}, {week_end:%Y}"
+)
+total_objects_text = f"{summary.total_objects:,}"
+hazardous_count_text = f"{summary.hazardous_count:,}"
+hazard_share = (
+    summary.hazardous_count / summary.total_objects
+    if summary.total_objects
+    else 0.0
+)
+hazard_share_text = f"{hazard_share:.1%}"
+closest_name = summary.closest.name if summary.closest else "No object"
+closest_distance = (
+    f"{summary.closest.miss_distance_lunar:.2f} LD"
+    if summary.closest
+    else "not available"
+)
+fastest_name = summary.fastest.name if summary.fastest else "No object"
+fastest_velocity = (
+    f"{summary.fastest.velocity_kph:,.0f} km/h"
+    if summary.fastest
+    else "not available"
+)
+largest_name = summary.largest.name if summary.largest else "No object"
+largest_diameter = (
+    f"{summary.largest.diameter_meters:,.0f} m"
+    if summary.largest
+    else "not available"
+)
+
+revision = command_output("git", "rev-parse", "--short", "HEAD")
+working_tree_status = command_output("git", "status", "--porcelain")
+if working_tree_status != "unavailable":
+    revision = f"{revision} (working tree modified)"
+
+raw_relative = raw_path.relative_to(project_root).as_posix()
+metadata_relative = metadata_path.relative_to(project_root).as_posix()
+provenance_table = pd.DataFrame(
+    [
+        ("Source", NASA_NEO_FEED_URL),
+        ("Requested period", f"{week_start} through {week_end}"),
+        ("Acquired (UTC)", acquired_at.isoformat()),
+        ("Acquisition mode", acquisition_mode),
+        ("Raw response", raw_relative),
+        ("Metadata record", metadata_relative),
+        ("Raw SHA-256", f"{raw_digest[:16]}..."),
+        ("Project version", package_version("near-earth-object-monitor")),
+        ("Project revision", revision),
+        ("Python", platform.python_version()),
+        ("Quarto", command_output("quarto", "--version")),
+        ("Rendered (UTC)", report_generated_at.isoformat()),
+    ],
+    columns=["Field", "Recorded value"],
+)
+```
+
+# Purpose and scope {#sec-purpose}
+
+This report describes predicted close approaches reported for
+`{python} period_text` by NASA's Near Earth Object Web Service (NeoWs)
+[@nasa-neows]. It is designed as a recurring publication: a new calendar week
+produces a new request, saved response, analysis, and PDF.
+
+The report separates four responsibilities. The project API client acquires the
+outside response, the output helper records it, the shared workflow validates
+and analyzes it, and this document selects evidence for publication. Every
+number, table, and figure below is generated from that one validated result.
+
+::: {.callout-note}
+## Classification is not a prediction of impact
+
+NASA's potentially hazardous flag identifies objects that meet orbital and
+size criteria. It does not state that an object will strike Earth
+[@cneos-pha].
+:::
+
+# Data and methods {#sec-methods}
+
+## Acquisition and preservation
+
+The requested period is the Monday-through-Sunday calendar week containing the
+render date. On the first render for that period, the report calls the existing
+`fetch_monitor_feed` boundary and saves a credential-sanitized copy under
+`data/raw/` before validation. Later renders reuse that saved response unless
+`NEO_REPORT_REFRESH=1` is set.
+
+This run **`{python} acquisition_mode.lower()`**. The response was acquired at
+`{python} acquired_at.isoformat()` UTC. The API key was read from the local
+environment and was not written to the report, saved response, metadata, or
+logs.
+
+## Validation and derivation
+
+`build_monitor_result` validates the NASA fields used by the project before
+creating immutable internal records. Missing or unusable required values stop
+the report rather than being silently replaced. Field meanings and units are
+defined in `docs/data-dictionary.md`.
+
+NASA supplies lower and upper estimated diameter bounds in kilometers. The
+project reports their arithmetic mean in meters, as shown in @eq-mean-diameter.
+
+$$
+d_{\mathrm{mean,m}} = 1000\left(\frac{d_{\min,\mathrm{km}} +
+d_{\max,\mathrm{km}}}{2}\right)
+$$ {#eq-mean-diameter}
+
+The weekly summary uses all validated records. @Tbl-closest then ranks those
+records by miss distance and presents the eight closest approaches. Ranking
+changes presentation order; it does not change the full-week summary.
+
+# Results {#sec-results}
+
+::: {.callout-note}
+## Weekly summary
+
+- **Objects reported:** `{python} total_objects_text`
+- **Potentially hazardous:** `{python} hazardous_count_text` (`{python} hazard_share_text`)
+- **Closest approach:** `{python} closest_name` at `{python} closest_distance`
+- **Fastest relative velocity:** `{python} fastest_name` at `{python} fastest_velocity`
+- **Largest mean estimated diameter:** `{python} largest_name` at `{python} largest_diameter`
+:::
+
+## Closest approaches
+
+@Tbl-closest reports the closest validated records in lunar distances (LD), a
+unit relative to the average Earth-Moon distance.[^ld] Lower values represent
+closer predicted approaches.
+
+```{python}
+#| label: tbl-closest
+#| tbl-cap: "Eight closest predicted approaches during the requested week."
+#| output: asis
+
+display(Markdown(closest_table.to_markdown(index=False)))
+```
+
+[^ld]: NASA supplies both kilometer and lunar-distance values in the NeoWs
+    response. This project preserves both and uses the provider's values rather
+    than converting between them during report generation.
+
+## Size and miss distance
+
+@Fig-size-distance compares all validated objects rather than only the eight
+rows selected for @tbl-closest. Logarithmic axes keep small and large values
+legible in the same figure.
+
+```{python}
+#| label: fig-size-distance
+#| fig-cap: "Mean estimated diameter and predicted miss distance for reported near-Earth objects. Both axes use logarithmic scales."
+#| fig-alt: "Scatterplot of estimated diameter against miss distance in lunar distances. Points are colored by NASA's potentially hazardous classification, and both axes use logarithmic scales."
+#| fig-width: 7
+#| fig-height: 4.5
+
+(
+    ggplot(
+        objects_df,
+        aes(
+            x="miss_distance_lunar",
+            y="diameter_meters",
+            color="Hazard classification",
+        ),
+    )
+    + geom_point(alpha=0.75, size=2.2)
+    + scale_x_log10()
+    + scale_y_log10()
+    + labs(
+        x="Miss distance (lunar distances, log scale)",
+        y="Mean estimated diameter (meters, log scale)",
+        color="NASA classification",
+    )
+    + theme_minimal()
+)
+```
+
+# Interpretation and limitations {#sec-limitations}
+
+The results describe what the NeoWs feed reported at the acquisition time.
+They support comparison and monitoring, but they do not estimate collision
+probability, impact severity, or uncertainty in an object's orbit. The
+potentially hazardous designation has a specific orbital and size-based
+definition maintained by NASA's Center for Near Earth Object Studies
+[@cneos-pha].
+
+The diameter is an estimate derived from provider-supplied bounds, not a direct
+measurement. The introductory project also uses the first close-approach entry
+supplied for each feed record. Provider revisions, a refreshed response, or a
+new calendar week can therefore change the report.
+
+::: {.callout-caution}
+## Appropriate use
+
+Use this report to inspect a documented weekly API result and the software
+process that produced it. Consult NASA's current scientific and planetary
+defense resources for operational interpretation.
+:::
+
+# Reproducibility and provenance {#sec-provenance}
+
+@Tbl-provenance records the inputs and software context for this render. The
+short digest shown in the PDF is sufficient for identification; the complete
+SHA-256 digest is retained in the metadata sidecar.[^digest]
+
+```{python}
+#| label: tbl-provenance
+#| tbl-cap: "Data and software provenance recorded for this report render."
+#| output: asis
+
+display(Markdown(provenance_table.to_markdown(index=False)))
+```
+
+[^digest]: A cryptographic digest can detect whether the saved response has
+    changed. It does not establish that the provider's data are scientifically
+    correct.
+
+The report calls the project's shared workflow rather than recreating API,
+validation, or ranking logic in the document. @Lst-workflow shows the core
+first-run calls; caching and publication-specific preparation remain in the
+report source.
+
+```{python}
+#| label: lst-workflow
+#| lst-cap: "Core project calls used to acquire and analyze one report period."
+#| eval: false
+#| echo: true
+
+request = MonitorRequest(start_date=week_start, end_date=week_end)
+feed = fetch_monitor_feed(api_key, request)
+write_raw_json(feed, raw_path)
+result = build_monitor_result(feed, request)
+```
+
+Render the saved weekly report with:
+
+```bash
+quarto render reports/neo-report.qmd --to pdf
+```
+
+Set `NEO_REPORT_REFRESH=1` only when a new response should replace the saved
+response for the same week.
+
+# References {.unnumbered}
+
+::: {#refs}
+:::

@@ -7,6 +7,7 @@ from io import StringIO
 import json
 from pathlib import Path
 from typing import Any, Sequence
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from neo_monitor.summarize import NeoObject
 
@@ -28,10 +29,11 @@ class OutputWriteError(RuntimeError):
 
 
 def write_raw_json(feed: dict[str, Any], output_path: Path) -> None:
-    """Write a readable copy of the raw NASA response.
+    """Write a readable, credential-sanitized copy of the NASA response.
 
-    Parent directories are created as needed. The raw response is intentionally
-    preserved before project validation or transformation.
+    Parent directories are created as needed. Analytical response fields are
+    preserved before project validation or transformation, while API-key query
+    values echoed in provider link metadata are redacted.
 
     Raises:
         OutputWriteError: If the destination cannot be created or written.
@@ -68,9 +70,42 @@ def _ensure_parent_dir(output_path: Path) -> None:
 
 
 def raw_json_text(feed: dict[str, Any]) -> str:
-    """Return a readable raw NASA response for file or browser download."""
+    """Return a readable NASA response with URL credential values redacted."""
 
-    return json.dumps(feed, indent=2, sort_keys=True) + "\n"
+    return (
+        json.dumps(_redact_api_key_query_values(feed), indent=2, sort_keys=True) + "\n"
+    )
+
+
+def _redact_api_key_query_values(value: Any) -> Any:
+    """Copy JSON-like data while redacting API keys embedded in URL queries."""
+
+    if isinstance(value, dict):
+        return {key: _redact_api_key_query_values(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_redact_api_key_query_values(item) for item in value]
+    if isinstance(value, str):
+        return _redact_api_key_in_url(value)
+    return value
+
+
+def _redact_api_key_in_url(value: str) -> str:
+    """Replace an ``api_key`` URL query value without changing other fields."""
+
+    parsed = urlsplit(value)
+    query_items = parse_qsl(parsed.query, keep_blank_values=True)
+    if not any(key.lower() == "api_key" for key, _ in query_items):
+        return value
+
+    redacted_query = urlencode(
+        [
+            (key, "[REDACTED]" if key.lower() == "api_key" else item)
+            for key, item in query_items
+        ]
+    )
+    return urlunsplit(
+        (parsed.scheme, parsed.netloc, parsed.path, redacted_query, parsed.fragment)
+    )
 
 
 def objects_csv_text(objects: Sequence[NeoObject]) -> str:

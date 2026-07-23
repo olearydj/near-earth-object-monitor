@@ -41,6 +41,7 @@ if validation fails.
 Source: NASA Near Earth Object Web Service NEO Feed API,
 <https://api.nasa.gov/>.
 
-Raw JSON output is the response received from NASA, formatted for readability.
-It is preserved separately because it contains more fields than this processed
-schema and provides evidence for later inspection.
+Raw JSON output preserves the response received from NASA, formatted for
+readability, except that API-key values echoed in provider link metadata are
+redacted. It is kept separately because it contains more analytical fields than
+this processed schema and provides evidence for later inspection.

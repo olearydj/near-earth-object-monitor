@@ -17,3 +17,13 @@ docs/api/
 reports/hello-quarto.pdf
 reports/hello-quarto.html
 reports/hello-quarto_files/
+reports/neo-report.pdf
+reports/neo-report.html
+reports/neo-report_files/
+reports/neo-report-agu.pdf
+reports/neo-report-agu.html
+reports/neo-report-agu.tex
+reports/neo-report-agu_files/
+
+/.quarto/
+**/*.quarto_ipynb

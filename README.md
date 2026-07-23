@@ -215,8 +215,9 @@ The `.env` file is ignored by Git so API keys do not get committed.
 
 ## Outputs and Documentation
 
-- Raw JSON is a complete, readable copy of the NASA response. Save it when
-  provenance or later troubleshooting matters.
+- Raw JSON is a readable, credential-sanitized copy of the NASA response. The
+  project redacts API-key values echoed in provider link metadata while
+  preserving analytical fields for provenance and later troubleshooting.
 - Processed CSV contains the smaller, validated record used by the project.
   See the [data dictionary](docs/data-dictionary.md) for fields, units, and
   transformation rules.
@@ -226,12 +227,23 @@ The `.env` file is ignored by Git so API keys do not get committed.
   file with `--log-file`. Logs are ignored by Git and must not contain API keys
   or private data.
 
-## Quarto Report Example
+## Quarto Reports
 
 The repository includes `reports/hello-quarto.qmd`, a small Python report
 adapted from Posit's Hello, Quarto tutorial. It uses the bundled Plotnine
 Palmer Penguins data so the example does not need a live API or downloaded
 data file.
+
+`reports/neo-report.qmd` is the project report. It requests the current calendar
+week from NASA, saves a credential-sanitized response and acquisition metadata
+under `data/raw/`, validates the response through the shared project workflow,
+and renders an academic-style PDF containing an abstract, citations, cross-
+references, computed prose, tables, figures, limitations, and provenance.
+
+`reports/neo-report-agu.qmd` is a prepared classroom variant of the same report
+body using the American Geophysical Union format. It exists to make a brief
+before-and-after demonstration possible; `reports/neo-report.qmd` remains the
+authoritative report source.
 
 Install Quarto globally with Homebrew, Scoop, or the official installer. Quarto
 is a separate CLI application and is not installed by `uv`. Restore and
@@ -262,8 +274,27 @@ Render the example directly with the global Quarto CLI:
 quarto render reports/hello-quarto.qmd --to pdf
 ```
 
-The generated `reports/hello-quarto.pdf` is ignored because it can be rebuilt
-from the committed source and locked Python environment.
+Render the weekly NEO report after configuring `NASA_API_KEY`:
+
+```bash
+quarto render reports/neo-report.qmd --to pdf
+```
+
+Render the prepared AGU variant with the extension included in this repository:
+
+```bash
+quarto render reports/neo-report-agu.qmd --to agu-pdf
+```
+
+For an existing project that does not yet contain the extension, add it with
+`quarto add quarto-journals/agu`.
+
+The first render for a calendar week requests and saves the response. Later
+renders reuse that saved evidence. Set `NEO_REPORT_REFRESH=1` when a new request
+should replace the saved response for the same week.
+
+The generated PDFs are ignored because they can be rebuilt from the committed
+source, saved input, and locked Python environment.
 
 ## Troubleshooting
 
@@ -329,6 +360,7 @@ uv run mypy src
 
 ```text
 .
+├── _quarto.yml             # Quarto project root and extension discovery
 ├── src/
 │   └── neo_monitor/
 │       ├── __main__.py     # python -m neo_monitor entry point
@@ -346,7 +378,12 @@ uv run mypy src
 │   ├── index.md            # documentation map
 │   └── specs/              # completed sprint specifications
 ├── reports/
-│   └── hello-quarto.qmd    # reproducible Python and Quarto starter
+│   ├── hello-quarto.qmd    # reproducible Python and Quarto starter
+│   ├── neo-report.qmd      # current-week NEO monitoring report
+│   ├── neo-report-agu.qmd  # prepared AGU classroom variant
+│   └── references.bib      # report bibliography
+├── _extensions/
+│   └── quarto-journals/agu/ # vendored AGU publication format
 ├── tests/
 │   ├── fixtures/
 │   └── test_*.py           # executable behavior examples
