@@ -1,0 +1,66 @@
+---
+title: "Hello, Quarto"
+subtitle: "Python and the Palmer Penguins"
+author: "INSY 7970"
+format:
+  pdf:
+    number-sections: true
+jupyter: python3
+---
+
+## Meet Quarto
+
+Quarto combines narrative written in Markdown with executable code and its
+results. Rendering this source document runs the Python cells and produces a
+finished PDF.
+
+## Meet the Palmer penguins
+
+```{python}
+#| label: load-penguins
+#| include: false
+
+from plotnine import aes, geom_point, ggplot, labs, theme_minimal
+from plotnine.data import penguins
+
+complete_penguins = penguins.dropna(
+    subset=["bill_length_mm", "flipper_length_mm", "species"]
+)
+```
+
+The `penguins` data bundled with
+[plotnine](https://plotnine.org/reference/penguins.html) contains measurements
+for `{python} len(penguins)` penguins from three species observed in the Palmer
+Archipelago, Antarctica.
+
+## Compare two measurements
+
+The relationship between bill length and flipper length differs across the
+three species. See @fig-penguins for the measurements used in this small
+example.
+
+```{python}
+#| label: fig-penguins
+#| fig-cap: "Bill length and flipper length for three Palmer penguin species."
+#| fig-alt: "Scatterplot of bill length against flipper length, with points colored by penguin species."
+#| fig-width: 7
+#| fig-height: 4.5
+
+(
+    ggplot(
+        complete_penguins,
+        aes("bill_length_mm", "flipper_length_mm", color="species"),
+    )
+    + geom_point(alpha=0.75, size=2)
+    + labs(x="Bill length (mm)", y="Flipper length (mm)", color="Species")
+    + theme_minimal()
+)
+```
+
+## Source and credit
+
+Adapted from Posit's
+[Hello, Quarto](https://quarto.org/docs/get-started/hello/positron.html)
+Python tutorial. The Palmer Penguins data were collected and made available by
+Dr. Kristen Gorman and the Palmer Station, Antarctica LTER; the data are
+available under the CC0 license.

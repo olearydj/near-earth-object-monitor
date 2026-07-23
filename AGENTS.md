@@ -6,7 +6,8 @@ Near-Earth Object Monitor is a small Python project that fetches and validates
 NASA NEO Feed data. It provides a repeatable CLI and a local Streamlit dashboard
 over the same trusted workflow.
 
-The project uses a `src/` layout, `uv`, `requests`, `python-dotenv`, Streamlit, `pytest`, Ruff, and mypy.
+The project uses a `src/` layout, `uv`, `requests`, `python-dotenv`, Streamlit,
+Quarto, `pytest`, Ruff, and mypy.
 
 ## Working Guidelines
 
@@ -33,6 +34,7 @@ The project uses a `src/` layout, `uv`, `requests`, `python-dotenv`, Streamlit, 
 - `docs/index.md`: durable documentation map and maintainer orientation.
 - `docs/data-dictionary.md`: processed CSV schema and derivation rules.
 - `docs/specs/`: completed sprint requirements and design constraints.
+- `reports/`: Quarto source documents; rendered outputs are generated artifacts.
 - `tests/`: executable examples of expected behavior and failure handling.
 - `logs/` and generated data folders: local runtime evidence, never source of
   truth and never committed.

@@ -25,6 +25,7 @@ The CLI fetches data from NASA's Near Earth Object Web Service, prints readable 
 - Python 3.11 or newer
 - `uv`
 - A NASA API key
+- Quarto and a TeX distribution such as TinyTeX to render PDF reports
 
 NASA's `DEMO_KEY` is enough for quick local testing, but it is rate-limited. Request a personal key from <https://api.nasa.gov/> for regular use.
 
@@ -225,7 +226,52 @@ The `.env` file is ignored by Git so API keys do not get committed.
   file with `--log-file`. Logs are ignored by Git and must not contain API keys
   or private data.
 
+## Quarto Report Example
+
+The repository includes `reports/hello-quarto.qmd`, a small Python report
+adapted from Posit's Hello, Quarto tutorial. It uses the bundled Plotnine
+Palmer Penguins data so the example does not need a live API or downloaded
+data file.
+
+Install Quarto globally with Homebrew, Scoop, or the official installer. Quarto
+is a separate CLI application and is not installed by `uv`. Restore and
+activate the project's Python environment so Quarto's Jupyter engine can use
+the report dependencies:
+
+```bash
+uv sync
+source .venv/bin/activate
+```
+
+On Windows PowerShell, activate the environment with:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Verify the publishing tools and install TinyTeX if needed:
+
+```bash
+quarto check
+quarto install tinytex
+```
+
+Render the example directly with the global Quarto CLI:
+
+```bash
+quarto render reports/hello-quarto.qmd --to pdf
+```
+
+The generated `reports/hello-quarto.pdf` is ignored because it can be rebuilt
+from the committed source and locked Python environment.
+
 ## Troubleshooting
+
+**Quarto cannot import `plotnine`**
+
+Activate the project's `.venv` before rendering. If `quarto check jupyter`
+still reports a Python path outside `.venv`, remove any existing
+`QUARTO_PYTHON` override from that shell and check again.
 
 **`NASA_API_KEY is required`**
 
@@ -299,6 +345,8 @@ uv run mypy src
 │   ├── data-dictionary.md  # processed data fields and derivations
 │   ├── index.md            # documentation map
 │   └── specs/              # completed sprint specifications
+├── reports/
+│   └── hello-quarto.qmd    # reproducible Python and Quarto starter
 ├── tests/
 │   ├── fixtures/
 │   └── test_*.py           # executable behavior examples
