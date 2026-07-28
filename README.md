@@ -53,6 +53,17 @@ uv run neo-monitor --start-date 2026-07-01 --end-date 2026-07-01
 The command prints a summary containing the requested date range, the number of
 objects observed, and the closest, fastest, and largest objects in the feed.
 
+## Development Check
+
+Run the project's lint and test contract with one command:
+
+```bash
+bash scripts/check.sh
+```
+
+`scripts/hello.sh` is a small Bash example that demonstrates sequencing, a
+loop, and a conditional without changing project files.
+
 Run the local browser dashboard:
 
 ```bash
