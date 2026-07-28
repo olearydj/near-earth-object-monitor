@@ -20,6 +20,9 @@ neo = "neo_monitor.cli:main"
 requires = ["uv_build>=0.11.25,<0.12"]
 build-backend = "uv_build"
 
+[tool.uv]
+exclude-newer = "3 days"
+
 [tool.uv.build-backend]
 module-name = "neo_monitor"
 
