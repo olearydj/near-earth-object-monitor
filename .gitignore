@@ -12,6 +12,7 @@ data/processed/
 outputs/
 logs/
 docs/api/
+dist/
 
 # Generated output from the committed Quarto starter
 reports/hello-quarto.pdf
