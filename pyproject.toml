@@ -33,6 +33,7 @@ dev = [
     # Keep installed stubs compatible with the project's Python 3.11 mypy target.
     "numpy<2.5",
     "pandas>=3.0.3",
+    "pdoc>=16.0.0",
     "plotnine>=0.15.7",
     "pytest>=8.4",
     "pytest-cov>=7.1.0",
