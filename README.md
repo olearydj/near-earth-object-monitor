@@ -1,7 +1,5 @@
 # Near-Earth Object Monitor
 
-Edited!
-
 A Python tool for collecting, summarizing, filtering, exporting, and visually exploring NASA near-Earth object close-approach data.
 
 The CLI fetches data from NASA's Near Earth Object Web Service, prints readable terminal summaries and object tables, and can save raw and processed data artifacts for later inspection, testing, and reporting.
