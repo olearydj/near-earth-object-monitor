@@ -38,6 +38,12 @@ uv sync
 cp .env.example .env
 ```
 
+On Windows PowerShell, replace the `cp` command with:
+
+```powershell
+Copy-Item .env.example .env
+```
+
 Edit `.env` and set your API key:
 
 ```bash
