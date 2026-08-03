@@ -45,6 +45,33 @@ def test_parse_args_requires_a_ranking_for_a_bar_chart(capsys):
     assert "--bar-chart requires --sort-by" in capsys.readouterr().err
 
 
+def test_parse_args_requires_a_ranking_for_top(capsys):
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args(["--top", "5"])
+
+    assert exc_info.value.code == 2
+    assert "--top requires --sort-by" in capsys.readouterr().err
+
+
+def test_parse_args_rejects_a_plain_bar_chart(capsys):
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args(["--bar-chart", "--sort-by", "closest", "--plain"])
+
+    assert exc_info.value.code == 2
+    assert "--bar-chart cannot be used with --plain" in capsys.readouterr().err
+
+
+def test_parse_args_requires_output_for_a_ranking(capsys):
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args(["--sort-by", "largest"])
+
+    assert exc_info.value.code == 2
+    assert (
+        "--sort-by requires --list-objects, --bar-chart, or --save-processed-csv"
+        in capsys.readouterr().err
+    )
+
+
 def test_project_info_is_a_no_network_smoke_test(monkeypatch, capsys):
     def unexpected_network_call(**kwargs):
         raise AssertionError(f"unexpected network call: {kwargs}")
