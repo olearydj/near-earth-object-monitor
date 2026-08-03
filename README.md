@@ -371,12 +371,13 @@ Inspect which source lines the tests exercise:
 uv run pytest --cov=neo_monitor --cov-report=term-missing
 ```
 
-Run code quality checks:
+Run code quality checks and verify the diff:
 
 ```bash
 uv run ruff format --check .
 uv run ruff check .
 uv run mypy src
+git diff --check
 ```
 
 ## Project Structure
