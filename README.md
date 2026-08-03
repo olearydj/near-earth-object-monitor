@@ -365,6 +365,9 @@ Run tests:
 uv run python -m pytest
 ```
 
+The automated tests use committed fixtures and mocked responses, so they do not
+call NASA or require `NASA_API_KEY`.
+
 Inspect which source lines the tests exercise:
 
 ```bash
