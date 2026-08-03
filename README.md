@@ -228,6 +228,12 @@ Set `NASA_API_KEY` in your shell or in a local `.env` file.
 export NASA_API_KEY=your_api_key_here
 ```
 
+On Windows PowerShell, use:
+
+```powershell
+$env:NASA_API_KEY = "your_api_key_here"
+```
+
 The `.env` file is ignored by Git so API keys do not get committed.
 
 ## Outputs and Documentation
