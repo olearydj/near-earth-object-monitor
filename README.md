@@ -268,6 +268,9 @@ body using the American Geophysical Union format. It exists to make a brief
 before-and-after demonstration possible; `reports/neo-report.qmd` remains the
 authoritative report source.
 
+Rendered report outputs are generated artifacts; rebuild them from the Quarto source 
+in `reports/` rather than editing generated files directly.
+
 Install Quarto globally with Homebrew, Scoop, or the official installer. Quarto
 is a separate CLI application and is not installed by `uv`. Restore and
 activate the project's Python environment so Quarto's Jupyter engine can use
